@@ -3,7 +3,6 @@ import SymptomEntry from '../models/SymptomEntry.js'
 import verifyToken from '../middleware/verifyToken.js'
 
 const router = express.Router()
-
 router.use(verifyToken)
 
 // POST /api/symptoms
@@ -122,7 +121,7 @@ router.patch('/:id', async (req, res) => {
   }
 })
 
-// DELETE /api/symptoms/:id  (soft delete)
+// DELETE /api/symptoms/:id (soft delete)
 router.delete('/:id', async (req, res) => {
   try {
     const entry = await SymptomEntry.findOne({

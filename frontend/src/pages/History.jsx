@@ -77,7 +77,6 @@ function EntryCard({ entry, onDelete }) {
             </div>
           )}
         </div>
-
         <div className="flex flex-col items-end gap-3 shrink-0">
           <span className="text-xs text-gray-400">
             {formatDate(entry.createdAt)}
@@ -166,20 +165,17 @@ export default function History() {
           </div>
         )}
 
-        {loading && (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse"
-              >
-                <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
-                <div className="h-3 bg-gray-100 rounded w-1/2 mb-2" />
-                <div className="h-3 bg-gray-100 rounded w-1/4" />
-              </div>
-            ))}
-          </div>
-        )}
+        {loading &&
+          [1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse mb-3"
+            >
+              <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
+              <div className="h-3 bg-gray-100 rounded w-1/2 mb-2" />
+              <div className="h-3 bg-gray-100 rounded w-1/4" />
+            </div>
+          ))}
 
         {!loading && entries.length === 0 && !error && (
           <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">

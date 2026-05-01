@@ -3,7 +3,6 @@ import User from '../models/User.js'
 import verifyToken from '../middleware/verifyToken.js'
 
 const router = express.Router()
-
 router.use(verifyToken)
 
 // GET /api/users/me
@@ -32,9 +31,8 @@ router.patch('/me', async (req, res) => {
       if (req.body[f] !== undefined) updates[f] = req.body[f]
     })
 
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(updates).length === 0)
       return res.status(400).json({ error: 'No valid fields to update' })
-    }
 
     const user = await User.findByIdAndUpdate(
       req.user.id,

@@ -27,18 +27,9 @@ const SymptomEntrySchema = new mongoose.Schema(
       enum: ['Under 1h', '1–6h', 'Half day', 'All day', 'Multi-day'],
       required: [true, 'Duration is required'],
     },
-    triggers: {
-      type: [String],
-      default: [],
-    },
-    medication: {
-      type: String,
-      default: '',
-    },
-    notes: {
-      type: String,
-      default: '',
-    },
+    triggers: { type: [String], default: [] },
+    medication: { type: String, default: '' },
+    notes: { type: String, default: '' },
     mood: {
       type: String,
       enum: ['Good', 'Okay', 'Low', 'Anxious', 'Tired', ''],
@@ -58,10 +49,7 @@ const SymptomEntrySchema = new mongoose.Schema(
       isRecurring: { type: Boolean, default: false },
       recurrenceNote: { type: String, default: '' },
     },
-    deletedAt: {
-      type: Date,
-      default: null,
-    },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 )

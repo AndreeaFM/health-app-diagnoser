@@ -6,6 +6,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import LogSymptom from './pages/LogSymptom'
 import History from './pages/History'
+import Profile from './pages/Profile'
 
 function Protected({ children }) {
   return <ProtectedRoute>{children}</ProtectedRoute>
@@ -39,6 +40,14 @@ export default function App() {
           element={
             <Protected>
               <History />
+            </Protected>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <Protected>
+              <Profile />
             </Protected>
           }
         />

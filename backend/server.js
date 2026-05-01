@@ -5,6 +5,7 @@ import dotenv from 'dotenv'
 import authRoutes from './routes/auth.js'
 import symptomRoutes from './routes/symptoms.js'
 import userRoutes from './routes/users.js'
+import statsRoutes from './routes/stats.js'
 
 dotenv.config()
 
@@ -12,7 +13,7 @@ const app = express()
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: process.env.CLIENT_URL || 'http://localhost:5174',
     credentials: true,
   })
 )
@@ -25,6 +26,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/symptoms', symptomRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/stats', statsRoutes)
 
 mongoose
   .connect(process.env.MONGO_URI)

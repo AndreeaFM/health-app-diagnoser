@@ -19,25 +19,14 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    dateOfBirth: {
-      type: Date,
-    },
+    dateOfBirth: { type: Date },
     gender: {
       type: String,
       enum: ['male', 'female', 'other', 'prefer_not_to_say'],
     },
-    medicalHistory: {
-      type: [String],
-      default: [],
-    },
-    allergies: {
-      type: [String],
-      default: [],
-    },
-    profileComplete: {
-      type: Boolean,
-      default: false,
-    },
+    medicalHistory: { type: [String], default: [] },
+    allergies: { type: [String], default: [] },
+    profileComplete: { type: Boolean, default: false },
   },
   { timestamps: true }
 )
