@@ -1,3 +1,5 @@
+import 'dotenv/config'
+
 import express from 'express'
 import mongoose from 'mongoose'
 import cors from 'cors'
@@ -6,6 +8,8 @@ import authRoutes from './routes/auth.js'
 import symptomRoutes from './routes/symptoms.js'
 import userRoutes from './routes/users.js'
 import statsRoutes from './routes/stats.js'
+import triageRoutes from './routes/triage.js'
+import reportsRoutes from './routes/reports.js'
 
 dotenv.config()
 
@@ -20,13 +24,15 @@ app.use(
 app.use(express.json())
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Symptom Tracker API is running' })
+  res.json({ message: 'Symptom Tracker API is running ✓' })
 })
 
 app.use('/api/auth', authRoutes)
 app.use('/api/symptoms', symptomRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/stats', statsRoutes)
+app.use('/api/triage', triageRoutes)
+app.use('/api/reports', reportsRoutes)
 
 mongoose
   .connect(process.env.MONGO_URI)

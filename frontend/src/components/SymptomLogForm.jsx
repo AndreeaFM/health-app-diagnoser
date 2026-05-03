@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import TriageResult from './TriageResult'
 
 const BODY_AREAS = [
   'Head',
@@ -57,6 +58,17 @@ const SEVERITIES = [
   },
 ]
 
+const EMPTY = {
+  bodyAreas: [],
+  symptomTypes: [],
+  severity: null,
+  duration: null,
+  triggers: [],
+  medication: '',
+  notes: '',
+  mood: null,
+}
+
 function Label({ children, required }) {
   return (
     <span className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
@@ -90,23 +102,16 @@ function ChipGroup({ options, selected, onToggle, multi = true }) {
   )
 }
 
-const EMPTY = {
-  bodyAreas: [],
-  symptomTypes: [],
-  severity: null,
-  duration: null,
-  triggers: [],
-  medication: '',
-  notes: '',
-  mood: null,
-}
-
 export default function SymptomLogForm() {
   const navigate = useNavigate()
   const [form, setForm] = useState(EMPTY)
-  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [triaging, setTriaging] = useState(false)
   const [error, setError] = useState('')
-  const [done, setDone] = useState(false)
+  const [savedEntry, setSavedEntry] = useState(null)
+  const [triage, setTriage] = useState(null)
+  const [summary, setSummary] = useState('')
+  const [fallback, setFallback] = useState(false)
 
   const toggle = (field) => (val) =>
     setForm((prev) => ({
@@ -126,59 +131,139 @@ export default function SymptomLogForm() {
 
   const handleSubmit = async () => {
     if (!isValid) return
-    setLoading(true)
+    setSaving(true)
     setError('')
     try {
-      await api.post('/api/symptoms', form)
-      setDone(true)
+      // Step 1: save the entry
+      const { entry } = await api.post('/api/symptoms', form)
+      setSavedEntry(entry)
+
+      // Step 2: call triage (non-blocking UI — show loading state)
+      setSaving(false)
+      setTriaging(true)
+      try {
+        const triageData = await api.post(`/api/triage/entry/${entry._id}`, {})
+        setTriage(triageData.triage)
+        setSummary(triageData.summary || '')
+        setFallback(!!triageData.fallback)
+      } catch {
+        // If triage fails entirely, show fallback
+        setTriage({
+          urgency: 'low',
+          recommendation:
+            'AI triage is temporarily unavailable. Monitor your symptoms and consult a doctor if they worsen.',
+          seekCareIf: [
+            'Symptoms worsen significantly',
+            'You develop a high fever',
+          ],
+        })
+        setFallback(true)
+      } finally {
+        setTriaging(false)
+      }
     } catch (err) {
       setError(err.message)
-    } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
-  if (done) {
+  const handleReset = () => {
+    setForm(EMPTY)
+    setSavedEntry(null)
+    setTriage(null)
+    setSummary('')
+    setFallback(false)
+    setError('')
+  }
+
+  // ── Success state: show triage result ──
+  if (savedEntry) {
     return (
-      <div className="text-center py-10">
-        <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M5 13l4 4L19 7"
-              stroke="#16a34a"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+      <div>
+        {/* Success banner */}
+        <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-2xl mb-4">
+          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M5 13l4 4L19 7"
+                stroke="#16a34a"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-green-800">
+              Entry saved successfully
+            </p>
+            <p className="text-xs text-green-600 mt-0.5">
+              {savedEntry.symptomTypes.join(', ')} · {savedEntry.duration} ·
+              severity {savedEntry.severity}/4
+            </p>
+          </div>
         </div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">
-          Entry saved!
-        </h2>
-        <p className="text-sm text-gray-500 mb-6">
-          Your symptoms have been logged.
-        </p>
-        <div className="flex gap-3 justify-center">
-          <button
-            onClick={() => {
-              setDone(false)
-              setForm(EMPTY)
-            }}
-            className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition"
-          >
-            Log another
-          </button>
-          <button
-            onClick={() => navigate('/history')}
-            className="px-4 py-2 text-sm bg-gray-900 text-white rounded-xl hover:bg-gray-700 transition"
-          >
-            View history
-          </button>
-        </div>
+
+        {/* Triage loading */}
+        {triaging && (
+          <div className="flex items-center gap-3 px-4 py-4 bg-blue-50 border border-blue-200 rounded-2xl mb-4">
+            <svg
+              className="animate-spin w-5 h-5 text-blue-500 shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+            <p className="text-sm text-blue-700">
+              AI is analysing your symptoms…
+            </p>
+          </div>
+        )}
+
+        {/* Triage result */}
+        {triage && !triaging && (
+          <TriageResult
+            triage={triage}
+            summary={summary}
+            entryId={savedEntry._id}
+            fallback={fallback}
+          />
+        )}
+
+        {/* Actions */}
+        {!triaging && (
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={handleReset}
+              className="flex-1 py-2.5 text-sm border border-gray-200 rounded-2xl hover:bg-gray-50 transition"
+            >
+              Log another
+            </button>
+            <button
+              onClick={() => navigate('/history')}
+              className="flex-1 py-2.5 text-sm bg-gray-900 text-white rounded-2xl hover:bg-gray-700 transition"
+            >
+              View history
+            </button>
+          </div>
+        )}
       </div>
     )
   }
 
+  // ── Form state ──
   return (
     <div className="space-y-4">
       {error && (
@@ -271,7 +356,7 @@ export default function SymptomLogForm() {
         <textarea
           value={form.notes}
           onChange={(e) => set('notes')(e.target.value)}
-          placeholder="Describe what you feel…"
+          placeholder="Describe what you feel in your own words…"
           rows={3}
           className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl resize-none focus:outline-none focus:border-blue-400 transition"
         />
@@ -289,14 +374,14 @@ export default function SymptomLogForm() {
 
       <button
         onClick={handleSubmit}
-        disabled={!isValid || loading}
+        disabled={!isValid || saving}
         className={`w-full py-3 rounded-2xl text-sm font-medium transition-all ${
-          isValid && !loading
+          isValid && !saving
             ? 'bg-gray-900 text-white hover:bg-gray-700'
             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
         }`}
       >
-        {loading ? 'Saving…' : 'Save entry'}
+        {saving ? 'Saving…' : 'Save entry + get AI triage'}
       </button>
 
       {!isValid && (

@@ -11,6 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  ReferenceLine,
 } from 'recharts'
 import Layout from '../components/Layout'
 import SeverityBadge from '../components/SeverityBadge'
@@ -26,6 +27,27 @@ const BAR_COLORS = [
   '#F59E0B',
   '#10B981',
 ]
+
+const URGENCY_COLORS = {
+  low: {
+    bg: 'bg-green-50',
+    text: 'text-green-700',
+    border: 'border-green-200',
+    dot: 'bg-green-400',
+  },
+  moderate: {
+    bg: 'bg-amber-50',
+    text: 'text-amber-700',
+    border: 'border-amber-200',
+    dot: 'bg-amber-400',
+  },
+  high: {
+    bg: 'bg-red-50',
+    text: 'text-red-700',
+    border: 'border-red-200',
+    dot: 'bg-red-400',
+  },
+}
 
 function shortDate(s) {
   return new Date(s).toLocaleDateString('en-GB', {
@@ -90,7 +112,7 @@ function SevTooltip({ active, payload, label }) {
     <div className="bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm text-xs">
       <p className="text-gray-500 mb-0.5">{shortDate(label)}</p>
       <p className="font-medium text-gray-900">
-        {SEV_LABEL[Math.round(val)] || val} ({val})
+        {SEV_LABEL[Math.round(val)] ?? val} (score: {val})
       </p>
     </div>
   )
@@ -125,10 +147,15 @@ export default function Dashboard() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'
 
+  // Show chart if we have at least 1 data point
+  const hasSeverityChart = stats?.severityOverTime?.length >= 1
+  const hasSymptoms = stats?.topSymptoms?.length > 0
+  const hasTriggers = stats?.topTriggers?.length > 0
+
   return (
     <Layout>
       <div className="max-w-3xl mx-auto px-6 py-8">
-        {/* Header + filter */}
+        {/* Header + day filter */}
         <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-xl font-semibold text-gray-900">
@@ -163,7 +190,13 @@ export default function Dashboard() {
 
         {error && (
           <div className="mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-            {error}
+            {error} —{' '}
+            <button
+              onClick={() => window.location.reload()}
+              className="underline"
+            >
+              retry
+            </button>
           </div>
         )}
 
@@ -176,7 +209,7 @@ export default function Dashboard() {
                 className="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse"
               >
                 <div className="h-3 bg-gray-100 rounded w-1/2 mb-3" />
-                <div className="h-6 bg-gray-100 rounded w-2/3" />
+                <div className="h-7 bg-gray-100 rounded w-2/3" />
               </div>
             ))}
           </div>
@@ -195,7 +228,9 @@ export default function Dashboard() {
                   : '—'
               }
               sub={
-                stats?.avgSeverity ? `score ${stats.avgSeverity}` : 'no data'
+                stats?.avgSeverity
+                  ? `score ${stats.avgSeverity} / 4`
+                  : 'no data yet'
               }
               highlight={stats?.avgSeverity >= 3}
             />
@@ -227,19 +262,37 @@ export default function Dashboard() {
           </svg>
         </Link>
 
-        {/* Charts */}
+        {/* ── Charts ── */}
         {!loading && stats && stats.totalEntries > 0 && (
           <div className="space-y-6 mb-8">
-            {/* Severity over time line chart */}
-            {stats.severityOverTime?.length > 1 && (
+            {/* Severity over time */}
+            {hasSeverityChart && (
               <div className="bg-white rounded-2xl border border-gray-100 p-5">
-                <h2 className="text-sm font-semibold text-gray-900 mb-4">
-                  Severity over time
-                </h2>
-                <ResponsiveContainer width="100%" height={180}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold text-gray-900">
+                    Severity over time
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    {[
+                      { c: '#22c55e', l: 'Mild' },
+                      { c: '#f59e0b', l: 'Moderate' },
+                      { c: '#f97316', l: 'Severe' },
+                      { c: '#ef4444', l: 'Very severe' },
+                    ].map((s) => (
+                      <div key={s.l} className="flex items-center gap-1">
+                        <div
+                          style={{ background: s.c }}
+                          className="w-2 h-2 rounded-full"
+                        />
+                        <span className="text-xs text-gray-400">{s.l}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={200}>
                   <LineChart
                     data={stats.severityOverTime}
-                    margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
+                    margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                     <XAxis
@@ -250,36 +303,50 @@ export default function Dashboard() {
                     <YAxis
                       domain={[1, 4]}
                       ticks={[1, 2, 3, 4]}
-                      tick={{ fontSize: 11, fill: '#9ca3af' }}
+                      tickFormatter={(v) => SEV_LABEL[v]?.split(' ')[0] ?? v}
+                      tick={{ fontSize: 10, fill: '#9ca3af' }}
+                      width={55}
                     />
                     <Tooltip content={<SevTooltip />} />
+                    <ReferenceLine
+                      y={3}
+                      stroke="#f97316"
+                      strokeDasharray="4 2"
+                      strokeWidth={1}
+                    />
                     <Line
                       type="monotone"
                       dataKey="avg"
                       strokeWidth={2}
                       stroke="#3B82F6"
-                      dot={{ r: 3, fill: '#3B82F6' }}
-                      activeDot={{ r: 5 }}
+                      dot={{ r: 4, fill: '#3B82F6', strokeWidth: 0 }}
+                      activeDot={{ r: 6 }}
+                      isAnimationActive={true}
                     />
                   </LineChart>
                 </ResponsiveContainer>
+                {stats.severityOverTime.length === 1 && (
+                  <p className="text-xs text-gray-400 text-center mt-2">
+                    Log entries on more days to see the trend line
+                  </p>
+                )}
               </div>
             )}
 
-            {/* Top symptoms bar chart */}
-            {stats.topSymptoms?.length > 0 && (
+            {/* Top symptoms */}
+            {hasSymptoms && (
               <div className="bg-white rounded-2xl border border-gray-100 p-5">
                 <h2 className="text-sm font-semibold text-gray-900 mb-4">
                   Most frequent symptoms
                 </h2>
                 <ResponsiveContainer
                   width="100%"
-                  height={Math.max(120, stats.topSymptoms.length * 36)}
+                  height={Math.max(140, stats.topSymptoms.length * 38)}
                 >
                   <BarChart
                     data={stats.topSymptoms}
                     layout="vertical"
-                    margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
+                    margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -294,7 +361,7 @@ export default function Dashboard() {
                     <YAxis
                       type="category"
                       dataKey="name"
-                      width={120}
+                      width={130}
                       tick={{ fontSize: 12, fill: '#374151' }}
                     />
                     <Tooltip
@@ -318,8 +385,8 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Top triggers progress bars */}
-            {stats.topTriggers?.length > 0 && (
+            {/* Top triggers */}
+            {hasTriggers && (
               <div className="bg-white rounded-2xl border border-gray-100 p-5">
                 <h2 className="text-sm font-semibold text-gray-900 mb-4">
                   Most common triggers
@@ -343,7 +410,7 @@ export default function Dashboard() {
                               width: `${pct}%`,
                               background: BAR_COLORS[i % BAR_COLORS.length],
                             }}
-                            className="h-full rounded-full"
+                            className="h-full rounded-full transition-all duration-500"
                           />
                         </div>
                       </div>
@@ -355,10 +422,11 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* No data state */}
         {!loading && stats?.totalEntries === 0 && (
           <div className="text-center py-10 bg-white rounded-2xl border border-gray-100 mb-8">
             <p className="text-sm text-gray-500 mb-2">
-              No data yet for this period
+              No data for this period yet
             </p>
             <Link to="/log" className="text-sm text-blue-600 hover:underline">
               Log your first symptom
@@ -376,6 +444,17 @@ export default function Dashboard() {
           </Link>
         </div>
 
+        {loading &&
+          [1, 2].map((i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse mb-3"
+            >
+              <div className="h-3 bg-gray-100 rounded w-1/2 mb-2" />
+              <div className="h-3 bg-gray-100 rounded w-1/3" />
+            </div>
+          ))}
+
         {!loading && recent.length === 0 && (
           <div className="text-center py-8 bg-white rounded-2xl border border-gray-100">
             <p className="text-sm text-gray-500">No entries yet.</p>
@@ -384,26 +463,50 @@ export default function Dashboard() {
 
         {!loading && recent.length > 0 && (
           <div className="space-y-3">
-            {recent.map((entry) => (
-              <div
-                key={entry._id}
-                className="bg-white rounded-2xl border border-gray-100 p-4"
-              >
-                <div className="flex items-center gap-2 mb-1.5">
-                  <SeverityBadge severity={entry.severity} />
-                  <span className="text-sm font-medium text-gray-900">
-                    {entry.symptomTypes.join(', ')}
-                  </span>
+            {recent.map((entry) => {
+              const tri = entry.triage
+              const urgCfg = tri?.urgency ? URGENCY_COLORS[tri.urgency] : null
+              return (
+                <div
+                  key={entry._id}
+                  className="bg-white rounded-2xl border border-gray-100 p-4"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <SeverityBadge severity={entry.severity} />
+                        <span className="text-sm font-medium text-gray-900">
+                          {entry.symptomTypes.join(', ')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {entry.bodyAreas.join(', ')} · {entry.duration} ·{' '}
+                        {new Date(entry.createdAt).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </p>
+                    </div>
+                    {/* Triage urgency dot */}
+                    {urgCfg && (
+                      <div
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${urgCfg.bg} ${urgCfg.border} ${urgCfg.text} shrink-0`}
+                      >
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full ${urgCfg.dot}`}
+                        />
+                        {tri.urgency}
+                      </div>
+                    )}
+                  </div>
+                  {tri?.recommendation && (
+                    <p className="text-xs text-gray-500 mt-2 line-clamp-1 italic">
+                      AI: {tri.recommendation}
+                    </p>
+                  )}
                 </div>
-                <p className="text-xs text-gray-400">
-                  {entry.bodyAreas.join(', ')} · {entry.duration} ·{' '}
-                  {new Date(entry.createdAt).toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'short',
-                  })}
-                </p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

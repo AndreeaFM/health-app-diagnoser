@@ -1,4 +1,5 @@
 import express from 'express'
+import mongoose from 'mongoose'
 import SymptomEntry from '../models/SymptomEntry.js'
 import verifyToken from '../middleware/verifyToken.js'
 
@@ -12,10 +13,10 @@ router.get('/summary', async (req, res) => {
     const from = new Date()
     from.setDate(from.getDate() - days)
 
-    const userId = req.user.id
+    // Cast to ObjectId — this is the fix
+    const userId = new mongoose.Types.ObjectId(req.user.id)
     const filter = { userId, deletedAt: null, createdAt: { $gte: from } }
 
-    // Total count
     const totalEntries = await SymptomEntry.countDocuments(filter)
 
     if (totalEntries === 0) {
@@ -29,14 +30,12 @@ router.get('/summary', async (req, res) => {
       })
     }
 
-    // Average severity
     const [avgResult] = await SymptomEntry.aggregate([
       { $match: filter },
       { $group: { _id: null, avg: { $avg: '$severity' } } },
     ])
     const avgSeverity = Math.round((avgResult?.avg || 0) * 10) / 10
 
-    // Top symptoms
     const topSymptoms = await SymptomEntry.aggregate([
       { $match: filter },
       { $unwind: '$symptomTypes' },
@@ -46,7 +45,6 @@ router.get('/summary', async (req, res) => {
       { $project: { name: '$_id', count: 1, _id: 0 } },
     ])
 
-    // Top triggers
     const topTriggers = await SymptomEntry.aggregate([
       { $match: { ...filter, 'triggers.0': { $exists: true } } },
       { $unwind: '$triggers' },
@@ -56,7 +54,6 @@ router.get('/summary', async (req, res) => {
       { $project: { name: '$_id', count: 1, _id: 0 } },
     ])
 
-    // Severity over time (daily average)
     const severityOverTime = await SymptomEntry.aggregate([
       { $match: filter },
       {
@@ -77,7 +74,6 @@ router.get('/summary', async (req, res) => {
       },
     ])
 
-    // Mood over time
     const moodOverTime = await SymptomEntry.aggregate([
       { $match: { ...filter, mood: { $ne: '' } } },
       {
@@ -105,13 +101,12 @@ router.get('/summary', async (req, res) => {
 })
 
 // GET /api/stats/patterns
-// Detects symptoms appearing 3+ times in the last 7 days
 router.get('/patterns', async (req, res) => {
   try {
     const from = new Date()
     from.setDate(from.getDate() - 7)
 
-    const userId = req.user.id
+    const userId = new mongoose.Types.ObjectId(req.user.id)
     const filter = { userId, deletedAt: null, createdAt: { $gte: from } }
 
     const frequent = await SymptomEntry.aggregate([
