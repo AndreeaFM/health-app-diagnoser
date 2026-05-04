@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 
 const NAV = [
   {
@@ -84,6 +85,21 @@ const NAV = [
     ),
   },
   {
+    to: '/compare',
+    label: 'Compare',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
     to: '/profile',
     label: 'Profile',
     icon: (
@@ -108,8 +124,8 @@ function NavItem({ item, onClick }) {
       className={({ isActive }) =>
         `flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${
           isActive
-            ? 'bg-blue-50 text-blue-700 font-medium'
-            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 font-medium'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
         }`
       }
     >
@@ -119,23 +135,50 @@ function NavItem({ item, onClick }) {
   )
 }
 
+function ThemeToggle() {
+  const { dark, toggle } = useTheme()
+  return (
+    <button
+      onClick={toggle}
+      className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+      title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+    >
+      {dark ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="5" stroke="#f59e0b" strokeWidth="1.5" />
+          <path
+            d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+            stroke="#f59e0b"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
+            stroke="#6366f1"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </button>
+  )
+}
+
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
-
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden md:flex w-56 bg-white border-r border-gray-100 flex-col py-6 px-4 shrink-0">
-        {/* Logo */}
+      <aside className="hidden md:flex w-56 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex-col py-6 px-4 shrink-0">
         <div className="flex items-center gap-2.5 px-2 mb-8">
-          <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path
                 d="M12 21C6.37 15.5 1 10.7 1 6.6 1 3.2 4.07 2 6.28 2c1.31 0 4.15.5 5.72 4.5C13.57 2.5 16.4 2 17.72 2 19.93 2 23 3.2 23 6.6 23 10.7 17.63 15.5 12 21z"
@@ -143,34 +186,38 @@ export default function Layout({ children }) {
               />
             </svg>
           </div>
-          <span className="text-sm font-semibold text-gray-900">
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             SymptomTracker
           </span>
         </div>
 
-        {/* Nav links */}
         <nav className="flex flex-col gap-1 flex-1">
           {NAV.map((item) => (
             <NavItem key={item.to} item={item} />
           ))}
         </nav>
 
-        {/* User + logout */}
-        <div className="border-t border-gray-100 pt-4">
-          <div className="flex items-center gap-2.5 px-2 mb-3">
-            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600">
-              {user?.name?.charAt(0).toUpperCase()}
+        <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+          <div className="flex items-center justify-between px-2 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-semibold text-gray-600 dark:text-gray-400 shrink-0">
+                {user?.name?.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
+                  {user?.name}
+                </p>
+                <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-gray-900 truncate">
-                {user?.name}
-              </p>
-              <p className="text-xs text-gray-400 truncate">{user?.email}</p>
-            </div>
+            <ThemeToggle />
           </div>
           <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition"
+            onClick={() => {
+              logout()
+              navigate('/login')
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path
@@ -187,9 +234,9 @@ export default function Layout({ children }) {
       </aside>
 
       {/* ── Mobile top bar ── */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path
                 d="M12 21C6.37 15.5 1 10.7 1 6.6 1 3.2 4.07 2 6.28 2c1.31 0 4.15.5 5.72 4.5C13.57 2.5 16.4 2 17.72 2 19.93 2 23 3.2 23 6.6 23 10.7 17.63 15.5 12 21z"
@@ -197,39 +244,42 @@ export default function Layout({ children }) {
               />
             </svg>
           </div>
-          <span className="text-sm font-semibold text-gray-900">
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             SymptomTracker
           </span>
         </div>
-        <button
-          onClick={() => setMenuOpen((o) => !o)}
-          className="p-2 rounded-lg hover:bg-gray-50 transition"
-        >
-          {menuOpen ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M6 18L18 6M6 6l12 12"
-                stroke="#374151"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M4 6h16M4 12h16M4 18h16"
-                stroke="#374151"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+          >
+            {menuOpen ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M6 18L18 6M6 6l12 12"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M4 6h16M4 12h16M4 18h16"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* ── Mobile slide-down menu ── */}
+      {/* ── Mobile menu ── */}
       {menuOpen && (
-        <div className="md:hidden fixed top-12 left-0 right-0 z-20 bg-white border-b border-gray-100 px-4 py-3 shadow-lg">
+        <div className="md:hidden fixed top-12 left-0 right-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 shadow-lg">
           <nav className="flex flex-col gap-1 mb-3">
             {NAV.map((item) => (
               <NavItem
@@ -239,16 +289,21 @@ export default function Layout({ children }) {
               />
             ))}
           </nav>
-          <div className="border-t border-gray-100 pt-3 flex items-center justify-between">
+          <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600">
+              <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-semibold text-gray-600 dark:text-gray-400">
                 {user?.name?.charAt(0).toUpperCase()}
               </div>
-              <span className="text-xs text-gray-600">{user?.email}</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">
+                {user?.email}
+              </span>
             </div>
             <button
-              onClick={handleLogout}
-              className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg transition"
+              onClick={() => {
+                logout()
+                navigate('/login')
+              }}
+              className="text-xs text-gray-500 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
             >
               Sign out
             </button>
@@ -256,7 +311,6 @@ export default function Layout({ children }) {
         </div>
       )}
 
-      {/* ── Main content ── */}
       <main className="flex-1 overflow-auto md:pt-0 pt-14">{children}</main>
     </div>
   )
