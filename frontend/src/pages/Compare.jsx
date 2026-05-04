@@ -1,3 +1,4 @@
+//period comparison page
 import { useState } from 'react'
 import {
   BarChart,
