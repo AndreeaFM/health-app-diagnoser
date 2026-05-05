@@ -1,4 +1,3 @@
-//period comparison page
 import { useState } from 'react'
 import {
   BarChart,
@@ -15,37 +14,37 @@ import { api } from '../api'
 
 const SEV_LABEL = { 1: 'Mild', 2: 'Moderate', 3: 'Severe', 4: 'Very severe' }
 
-function StatDiff({ label, a, b, format = (v) => v, higherIsBad = true }) {
+function StatDiff({ label, a, b, higherIsBad = true }) {
   if (a == null || b == null) return null
   const diff = b - a
-  const pct = a === 0 ? null : Math.round((diff / a) * 100)
-  const worse = higherIsBad ? diff > 0 : diff < 0
+  const pct = a === 0 ? null : Math.round((Math.abs(diff) / a) * 100)
   const better = higherIsBad ? diff < 0 : diff > 0
+  const worse = higherIsBad ? diff > 0 : diff < 0
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-4">
-      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
         {label}
       </p>
-      <div className="flex items-end gap-4">
+      <div className="flex items-end gap-3">
         <div>
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
             Period A
           </p>
           <p className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            {format(a)}
+            {a}
           </p>
         </div>
-        <div
-          className={`flex items-center gap-1 text-sm font-medium pb-0.5 ${
-            better
-              ? 'text-green-600 dark:text-green-400'
-              : worse
-              ? 'text-red-600 dark:text-red-400'
-              : 'text-gray-400'
-          }`}
-        >
-          {diff !== 0 && (
+        {diff !== 0 && (
+          <div
+            className={`flex items-center gap-1 text-sm font-medium pb-0.5 ${
+              better
+                ? 'text-green-600 dark:text-green-400'
+                : worse
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-gray-400'
+            }`}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path
                 d={
@@ -59,21 +58,15 @@ function StatDiff({ label, a, b, format = (v) => v, higherIsBad = true }) {
                 strokeLinejoin="round"
               />
             </svg>
-          )}
-          {pct != null
-            ? `${Math.abs(pct)}%`
-            : diff === 0
-            ? '='
-            : diff > 0
-            ? `+${format(Math.abs(diff))}`
-            : `-${format(Math.abs(diff))}`}
-        </div>
+            {pct != null ? `${pct}%` : Math.abs(diff)}
+          </div>
+        )}
         <div>
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
             Period B
           </p>
           <p className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            {format(b)}
+            {b}
           </p>
         </div>
       </div>
@@ -90,19 +83,11 @@ export default function Compare() {
   const [error, setError] = useState('')
   const [compared, setCompared] = useState(false)
 
-  const fetchStats = async (period) => {
+  const fetchStats = (p) => {
     const params = new URLSearchParams({ days: 999 })
-    if (period.from) params.set('from', period.from)
-    if (period.to) params.set('to', period.to)
+    if (p.from) params.set('from', p.from)
+    if (p.to) params.set('to', p.to)
     return api.get(`/api/stats/summary?${params}`)
-  }
-
-  // Also fetch raw entries for the period to compute symptom breakdown
-  const fetchEntries = async (period) => {
-    const params = new URLSearchParams({ limit: 200 })
-    if (period.from) params.set('from', period.from)
-    if (period.to) params.set('to', period.to)
-    return api.get(`/api/symptoms?${params}`)
   }
 
   const handleCompare = async () => {
@@ -114,14 +99,12 @@ export default function Compare() {
     setError('')
     setCompared(false)
     try {
-      const [statsA, statsB, entriesA, entriesB] = await Promise.all([
+      const [sA, sB] = await Promise.all([
         fetchStats(periodA),
         fetchStats(periodB),
-        fetchEntries(periodA),
-        fetchEntries(periodB),
       ])
-      setDataA({ ...statsA, entries: entriesA.entries })
-      setDataB({ ...statsB, entries: entriesB.entries })
+      setDataA(sA)
+      setDataB(sB)
       setCompared(true)
     } catch (err) {
       setError(err.message)
@@ -130,22 +113,18 @@ export default function Compare() {
     }
   }
 
-  // Build symptom comparison chart data
-  const buildSymptomChart = () => {
+  const chartData = () => {
     if (!dataA || !dataB) return []
-    const allSymptoms = new Set([
+    const all = new Set([
       ...(dataA.topSymptoms || []).map((s) => s.name),
       ...(dataB.topSymptoms || []).map((s) => s.name),
     ])
-    return [...allSymptoms].map((name) => ({
+    return [...all].map((name) => ({
       name,
       'Period A': dataA.topSymptoms?.find((s) => s.name === name)?.count || 0,
       'Period B': dataB.topSymptoms?.find((s) => s.name === name)?.count || 0,
     }))
   }
-
-  const fmtSev = (v) => SEV_LABEL[Math.round(v)] || v
-  const fmtNum = (v) => Math.round(v * 10) / 10
 
   return (
     <Layout>
@@ -155,26 +134,25 @@ export default function Compare() {
             Compare periods
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Compare your health between two different date ranges.
+            Compare your health between two date ranges.
           </p>
         </div>
 
-        {/* Date pickers */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           {[
             {
               label: 'Period A',
-              period: periodA,
+              state: periodA,
               set: setPeriodA,
               color: '#3B82F6',
             },
             {
               label: 'Period B',
-              period: periodB,
+              state: periodB,
               set: setPeriodB,
               color: '#8B5CF6',
             },
-          ].map(({ label, period, set, color }) => (
+          ].map(({ label, state, set, color }) => (
             <div
               key={label}
               className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-4"
@@ -189,30 +167,24 @@ export default function Compare() {
                 </p>
               </div>
               <div className="space-y-2">
-                <div>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    From
-                  </label>
-                  <input
-                    type="date"
-                    value={period.from}
-                    onChange={(e) =>
-                      set((p) => ({ ...p, from: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    To
-                  </label>
-                  <input
-                    type="date"
-                    value={period.to}
-                    onChange={(e) => set((p) => ({ ...p, to: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-400"
-                  />
-                </div>
+                {['From', 'To'].map((f) => (
+                  <div key={f}>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      {f}
+                    </label>
+                    <input
+                      type="date"
+                      value={f === 'From' ? state.from : state.to}
+                      onChange={(e) =>
+                        set((p) => ({
+                          ...p,
+                          [f.toLowerCase()]: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-400"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -236,14 +208,9 @@ export default function Compare() {
           {loading ? 'Comparing…' : 'Compare periods'}
         </button>
 
-        {/* Results */}
         {compared && dataA && dataB && (
-          <div className="space-y-6">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Comparison results
-            </h2>
-
-            {/* Quick verdict */}
+          <div className="space-y-5">
+            {/* Verdict */}
             {(() => {
               const sevDiff =
                 (dataB.avgSeverity || 0) - (dataA.avgSeverity || 0)
@@ -258,7 +225,7 @@ export default function Compare() {
                       ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800'
                       : worse
                       ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
-                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
                   }`}
                 >
                   <p
@@ -273,46 +240,50 @@ export default function Compare() {
                     {better
                       ? '✓ Your health improved in Period B'
                       : worse
-                      ? '↑ Your symptoms were worse in Period B'
-                      : '→ Your health was similar in both periods'}
+                      ? '↑ Symptoms were worse in Period B'
+                      : '→ Health was similar in both periods'}
                   </p>
                 </div>
               )
             })()}
 
-            {/* Stats diff */}
             <div className="grid grid-cols-2 gap-3">
               <StatDiff
                 label="Total entries"
                 a={dataA.totalEntries}
                 b={dataB.totalEntries}
-                format={(v) => `${v}`}
                 higherIsBad={false}
               />
               <StatDiff
                 label="Avg severity"
-                a={dataA.avgSeverity}
-                b={dataB.avgSeverity}
-                format={fmtSev}
+                a={
+                  dataA.avgSeverity
+                    ? SEV_LABEL[Math.round(dataA.avgSeverity)]
+                    : '—'
+                }
+                b={
+                  dataB.avgSeverity
+                    ? SEV_LABEL[Math.round(dataB.avgSeverity)]
+                    : '—'
+                }
                 higherIsBad={true}
               />
             </div>
 
-            {/* Symptom comparison chart */}
-            {buildSymptomChart().length > 0 && (
+            {chartData().length > 0 && (
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                  Symptom frequency comparison
+                  Symptom frequency
                 </h3>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart
-                    data={buildSymptomChart()}
+                    data={chartData()}
                     layout="vertical"
                     margin={{ right: 16, left: 0 }}
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke={`#f3f4f6`}
+                      stroke="#f3f4f6"
                       horizontal={false}
                     />
                     <XAxis
@@ -349,7 +320,6 @@ export default function Compare() {
               </div>
             )}
 
-            {/* Trigger comparison */}
             {(dataA.topTriggers?.length > 0 ||
               dataB.topTriggers?.length > 0) && (
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">

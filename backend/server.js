@@ -10,6 +10,8 @@ import userRoutes from './routes/users.js'
 import statsRoutes from './routes/stats.js'
 import triageRoutes from './routes/triage.js'
 import reportsRoutes from './routes/reports.js'
+import notificationsRoutes from './routes/notifications.js'
+import medicationsRoutes from './routes/medications.js'
 
 dotenv.config()
 
@@ -23,9 +25,7 @@ app.use(
 )
 app.use(express.json())
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Symptom Tracker API is running ✓' })
-})
+app.get('/', (req, res) => res.json({ message: 'Symptom Tracker API ✓' }))
 
 app.use('/api/auth', authRoutes)
 app.use('/api/symptoms', symptomRoutes)
@@ -33,16 +33,18 @@ app.use('/api/users', userRoutes)
 app.use('/api/stats', statsRoutes)
 app.use('/api/triage', triageRoutes)
 app.use('/api/reports', reportsRoutes)
+app.use('/api/notifications', notificationsRoutes)
+app.use('/api/medications', medicationsRoutes)
 
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log('MongoDB connected')
-    app.listen(process.env.PORT || 5001, () => {
+    app.listen(process.env.PORT || 5001, () =>
       console.log(`Server running on port ${process.env.PORT || 5001}`)
-    })
+    )
   })
   .catch((err) => {
-    console.error('MongoDB connection error:', err.message)
+    console.error('MongoDB error:', err.message)
     process.exit(1)
   })

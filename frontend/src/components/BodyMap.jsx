@@ -1,133 +1,77 @@
-// Interactive body map — tap a region to select it
-// Areas map to the same values as the chip selector
-
-const AREAS = [
-  {
-    id: 'Head',
-    label: 'Head',
-    d: 'M 100 20 A 28 28 0 1 1 100 76 A 28 28 0 1 1 100 20 Z',
-  },
-  { id: 'Throat', label: 'Throat', d: 'M 88 76 L 112 76 L 115 95 L 85 95 Z' },
-  { id: 'Chest', label: 'Chest', d: 'M 72 95 L 128 95 L 132 145 L 68 145 Z' },
-  {
-    id: 'Stomach',
-    label: 'Stomach',
-    d: 'M 70 145 L 130 145 L 128 185 L 72 185 Z',
-  },
-  {
-    id: 'Back',
-    label: 'Back',
-    d: 'M 70 95 L 130 95 L 130 185 L 70 185 Z',
-    hidden: true,
-  },
-  { id: 'Limbs', label: 'Arms', d: 'M 42 95 L 68 95 L 72 175 L 44 175 Z' },
+// Interactive SVG body map
+const CLICKABLE = [
+  { id: 'Head', d: 'M100,20 a28,28 0 1,1 0,56 a28,28 0 1,1 0,-56' },
+  { id: 'Throat', d: 'M88,76 L112,76 L115,96 L85,96 Z' },
+  { id: 'Chest', d: 'M72,96 L128,96 L132,148 L68,148 Z' },
+  { id: 'Stomach', d: 'M70,148 L130,148 L128,188 L72,188 Z' },
+  { id: 'Limbs', d: 'M42,96 L68,96 L72,178 L44,178 Z', label: 'Left arm' },
   {
     id: 'Limbs',
-    label: 'Arms R',
-    d: 'M 132 95 L 158 95 L 156 175 L 128 175 Z',
+    d: 'M132,96 L158,96 L156,178 L128,178 Z',
+    label: 'Right arm',
     key: 'Limbs-R',
   },
-  { id: 'Limbs', label: 'Legs', d: 'M 72 185 L 98 185 L 96 270 L 70 270 Z' },
+  { id: 'Limbs', d: 'M72,188 L98,188 L96,272 L70,272 Z', label: 'Left leg' },
   {
     id: 'Limbs',
-    label: 'Legs R',
-    d: 'M 102 185 L 128 185 L 130 270 L 104 270 Z',
+    d: 'M102,188 L128,188 L130,272 L104,272 Z',
+    label: 'Right leg',
     key: 'Limbs-L',
   },
-  { id: 'Skin', label: 'Skin', hidden: true },
-  { id: 'Other', label: 'Other', hidden: true },
 ]
 
-const VISIBLE_AREAS = AREAS.filter((a) => !a.hidden && a.d)
+const LABELS = [
+  { x: 100, y: 52, t: 'Head' },
+  { x: 100, y: 88, t: 'Throat' },
+  { x: 100, y: 125, t: 'Chest' },
+  { x: 100, y: 170, t: 'Stomach' },
+  { x: 55, y: 138, t: 'Arm' },
+  { x: 145, y: 138, t: 'Arm' },
+  { x: 84, y: 232, t: 'Leg' },
+  { x: 116, y: 232, t: 'Leg' },
+]
 
 export default function BodyMap({ selected = [], onToggle, dark = false }) {
-  const isSelected = (id) => selected.includes(id)
-
-  const getColor = (id) => {
-    if (isSelected(id)) return '#3B82F6'
-    return dark ? '#374151' : '#e5e7eb'
-  }
-
-  const getStroke = (id) => {
-    if (isSelected(id)) return '#1d4ed8'
-    return dark ? '#4b5563' : '#d1d5db'
-  }
+  const sel = (id) => selected.includes(id)
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="relative">
-        <svg
-          width="200"
-          height="290"
-          viewBox="0 0 200 290"
-          className="cursor-pointer"
-        >
-          {/* Body outline fill */}
-          <ellipse
-            cx="100"
-            cy="48"
-            rx="28"
-            ry="28"
-            fill={dark ? '#1f2937' : '#f9fafb'}
-            stroke={dark ? '#374151' : '#e5e7eb'}
-            strokeWidth="1"
+    <div className="flex flex-col items-center gap-3">
+      <svg
+        width="200"
+        height="285"
+        viewBox="0 0 200 285"
+        className="cursor-pointer"
+      >
+        {CLICKABLE.map((a, i) => (
+          <path
+            key={a.key || `${a.id}-${i}`}
+            d={a.d}
+            fill={sel(a.id) ? '#3B82F6' : dark ? '#374151' : '#e5e7eb'}
+            stroke={sel(a.id) ? '#1d4ed8' : dark ? '#4b5563' : '#d1d5db'}
+            strokeWidth="1.5"
+            opacity={sel(a.id) ? 1 : 0.65}
+            onClick={() => onToggle(a.id)}
+            className="transition-all duration-150 hover:opacity-90"
           />
-          <rect
-            x="70"
-            y="95"
-            width="60"
-            height="95"
-            rx="4"
-            fill={dark ? '#1f2937' : '#f9fafb'}
-            stroke={dark ? '#374151' : '#e5e7eb'}
-            strokeWidth="1"
-          />
+        ))}
+        {LABELS.map((l, i) => (
+          <text
+            key={i}
+            x={l.x}
+            y={l.y}
+            textAnchor="middle"
+            fontSize="8"
+            fill={dark ? '#9ca3af' : '#6b7280'}
+            pointerEvents="none"
+          >
+            {l.t}
+          </text>
+        ))}
+      </svg>
 
-          {/* Clickable areas */}
-          {VISIBLE_AREAS.map((area) => (
-            <path
-              key={area.key || area.id}
-              d={area.d}
-              fill={getColor(area.id)}
-              stroke={getStroke(area.id)}
-              strokeWidth="1.5"
-              opacity={isSelected(area.id) ? 1 : 0.6}
-              onClick={() => onToggle(area.id)}
-              className="transition-all duration-150 hover:opacity-90"
-              style={{ cursor: 'pointer' }}
-            />
-          ))}
-
-          {/* Labels */}
-          {[
-            { x: 100, y: 52, label: 'Head' },
-            { x: 100, y: 88, label: 'Throat' },
-            { x: 100, y: 125, label: 'Chest' },
-            { x: 100, y: 168, label: 'Stomach' },
-            { x: 55, y: 138, label: 'Arms' },
-            { x: 145, y: 138, label: 'Arms' },
-            { x: 84, y: 232, label: 'Legs' },
-            { x: 116, y: 232, label: 'Legs' },
-          ].map((l, i) => (
-            <text
-              key={i}
-              x={l.x}
-              y={l.y}
-              textAnchor="middle"
-              fontSize="8"
-              fill={dark ? '#9ca3af' : '#6b7280'}
-              pointerEvents="none"
-            >
-              {l.label}
-            </text>
-          ))}
-        </svg>
-      </div>
-
-      {/* Chip row for non-body areas + selected summary */}
       <div className="w-full">
         <p className="text-xs text-gray-400 dark:text-gray-500 mb-2 text-center">
-          Tap the body or select below
+          Tap body or choose below
         </p>
         <div className="flex flex-wrap gap-2 justify-center">
           {['Back', 'Skin', 'Other'].map((area) => (
@@ -136,16 +80,15 @@ export default function BodyMap({ selected = [], onToggle, dark = false }) {
               type="button"
               onClick={() => onToggle(area)}
               className={`px-3 py-1.5 rounded-full text-xs border transition-all ${
-                isSelected(area)
+                sel(area)
                   ? 'bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
               }`}
             >
               {area}
             </button>
           ))}
         </div>
-
         {selected.length > 0 && (
           <p className="text-xs text-center mt-2 text-blue-600 dark:text-blue-400 font-medium">
             Selected: {[...new Set(selected)].join(', ')}

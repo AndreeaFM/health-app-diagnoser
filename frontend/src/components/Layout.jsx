@@ -100,6 +100,21 @@ const NAV = [
     ),
   },
   {
+    to: '/medications',
+    label: 'Medications',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M9 3L15 3M12 3v3M6.6 8A6 6 0 0017.4 8H6.6zM5 8h14l-1.405 9.1A2 2 0 0115.616 19H8.384a2 2 0 01-1.979-1.9L5 8z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
     to: '/profile',
     label: 'Profile',
     icon: (
@@ -140,8 +155,8 @@ function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-      title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={dark ? 'Light mode' : 'Dark mode'}
+      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
     >
       {dark ? (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -171,11 +186,11 @@ function ThemeToggle() {
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [open, setOpen] = useState(false)
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
-      {/* ── Desktop sidebar ── */}
+      {/* Desktop sidebar */}
       <aside className="hidden md:flex w-56 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex-col py-6 px-4 shrink-0">
         <div className="flex items-center gap-2.5 px-2 mb-8">
           <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center">
@@ -233,28 +248,18 @@ export default function Layout({ children }) {
         </div>
       </aside>
 
-      {/* ── Mobile top bar ── */}
+      {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 21C6.37 15.5 1 10.7 1 6.6 1 3.2 4.07 2 6.28 2c1.31 0 4.15.5 5.72 4.5C13.57 2.5 16.4 2 17.72 2 19.93 2 23 3.2 23 6.6 23 10.7 17.63 15.5 12 21z"
-                fill="#3B82F6"
-              />
-            </svg>
-          </div>
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            SymptomTracker
-          </span>
-        </div>
+        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          SymptomTracker
+        </span>
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <button
-            onClick={() => setMenuOpen((o) => !o)}
+            onClick={() => setOpen((o) => !o)}
             className="p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
           >
-            {menuOpen ? (
+            {open ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M6 18L18 6M6 6l12 12"
@@ -277,33 +282,27 @@ export default function Layout({ children }) {
         </div>
       </div>
 
-      {/* ── Mobile menu ── */}
-      {menuOpen && (
+      {open && (
         <div className="md:hidden fixed top-12 left-0 right-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 shadow-lg">
           <nav className="flex flex-col gap-1 mb-3">
             {NAV.map((item) => (
               <NavItem
                 key={item.to}
                 item={item}
-                onClick={() => setMenuOpen(false)}
+                onClick={() => setOpen(false)}
               />
             ))}
           </nav>
           <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-semibold text-gray-600 dark:text-gray-400">
-                {user?.name?.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-xs text-gray-600 dark:text-gray-400">
-                {user?.email}
-              </span>
-            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {user?.email}
+            </span>
             <button
               onClick={() => {
                 logout()
                 navigate('/login')
               }}
-              className="text-xs text-gray-500 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              className="text-xs border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
             >
               Sign out
             </button>

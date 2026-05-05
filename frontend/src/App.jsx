@@ -9,9 +9,9 @@ import LogSymptom from './pages/LogSymptom'
 import History from './pages/History'
 import Profile from './pages/Profile'
 import Compare from './pages/Compare'
-// import Medications from './pages/Medications'
+import Medications from './pages/Medications'
 
-function Protected({ children }) {
+function P({ children }) {
   return <ProtectedRoute>{children}</ProtectedRoute>
 }
 
@@ -26,51 +26,51 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <Protected>
+              <P>
                 <Dashboard />
-              </Protected>
+              </P>
             }
           />
           <Route
             path="/log"
             element={
-              <Protected>
+              <P>
                 <LogSymptom />
-              </Protected>
+              </P>
             }
           />
           <Route
             path="/history"
             element={
-              <Protected>
+              <P>
                 <History />
-              </Protected>
+              </P>
             }
           />
           <Route
             path="/profile"
             element={
-              <Protected>
+              <P>
                 <Profile />
-              </Protected>
+              </P>
             }
           />
           <Route
             path="/compare"
             element={
-              <Protected>
+              <P>
                 <Compare />
-              </Protected>
+              </P>
             }
           />
-          {/* <Route
+          <Route
             path="/medications"
             element={
-              <Protected>
+              <P>
                 <Medications />
-              </Protected>
+              </P>
             }
-          /> */}
+          />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>

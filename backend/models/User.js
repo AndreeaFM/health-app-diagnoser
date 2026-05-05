@@ -2,23 +2,16 @@ import mongoose from 'mongoose'
 
 const UserSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: [true, 'Name is required'],
-      trim: true,
-    },
+    name: { type: String, required: [true, 'Name is required'], trim: true },
     email: {
       type: String,
       required: [true, 'Email is required'],
       unique: true,
       lowercase: true,
       trim: true,
-      match: [/\S+@\S+\.\S+/, 'Invalid email format'],
+      match: [/\S+@\S+\.\S+/, 'Invalid email'],
     },
-    passwordHash: {
-      type: String,
-      required: true,
-    },
+    passwordHash: { type: String, required: true },
     dateOfBirth: { type: Date },
     gender: {
       type: String,
@@ -27,6 +20,12 @@ const UserSchema = new mongoose.Schema(
     medicalHistory: { type: [String], default: [] },
     allergies: { type: [String], default: [] },
     profileComplete: { type: Boolean, default: false },
+    emergencyContact: {
+      name: { type: String, default: '' },
+      email: { type: String, default: '' },
+      phone: { type: String, default: '' },
+    },
+    reminderEnabled: { type: Boolean, default: false },
   },
   { timestamps: true }
 )

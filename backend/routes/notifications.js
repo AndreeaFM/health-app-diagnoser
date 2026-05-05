@@ -8,43 +8,14 @@ import verifyToken from '../middleware/verifyToken.js'
 const router = express.Router()
 router.use(verifyToken)
 
-// ── Email transporter ────────────────────────────────────
 function getTransporter() {
   return nodemailer.createTransport({
     service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS, // Gmail App Password (not your real password)
-    },
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
   })
 }
 
-// ── PATCH /api/notifications/settings ────────────────────
-// Save emergency contact + reminder preference to user profile
-router.patch('/settings', async (req, res) => {
-  try {
-    const { emergencyContact, reminderEnabled } = req.body
-    const user = await User.findById(req.user.id)
-    if (!user) return res.status(404).json({ error: 'User not found' })
-
-    if (emergencyContact !== undefined) user.emergencyContact = emergencyContact
-    if (reminderEnabled !== undefined) user.reminderEnabled = reminderEnabled
-
-    await user.save()
-    res.status(200).json({
-      message: 'Settings saved',
-      user: {
-        emergencyContact: user.emergencyContact,
-        reminderEnabled: user.reminderEnabled,
-      },
-    })
-  } catch (err) {
-    console.error('Notification settings error:', err.message)
-    res.status(500).json({ error: 'Failed to save settings' })
-  }
-})
-
-// ── GET /api/notifications/settings ──────────────────────
+// GET /api/notifications/settings
 router.get('/settings', async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
@@ -63,25 +34,38 @@ router.get('/settings', async (req, res) => {
   }
 })
 
-// ── POST /api/notifications/emergency ─────────────────────
-// Sends an alert email to the emergency contact
-// Called automatically when a HIGH urgency triage result is generated
+// PATCH /api/notifications/settings
+router.patch('/settings', async (req, res) => {
+  try {
+    const { emergencyContact, reminderEnabled } = req.body
+    const user = await User.findById(req.user.id)
+    if (!user) return res.status(404).json({ error: 'User not found' })
+    if (emergencyContact !== undefined) user.emergencyContact = emergencyContact
+    if (reminderEnabled !== undefined) user.reminderEnabled = reminderEnabled
+    await user.save()
+    res.status(200).json({
+      message: 'Settings saved',
+      emergencyContact: user.emergencyContact,
+      reminderEnabled: user.reminderEnabled,
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save settings' })
+  }
+})
+
+// POST /api/notifications/emergency
 router.post('/emergency', async (req, res) => {
   try {
     const { entryId } = req.body
     const user = await User.findById(req.user.id)
-
-    if (!user.emergencyContact?.email) {
+    if (!user.emergencyContact?.email)
       return res
         .status(200)
         .json({ sent: false, reason: 'No emergency contact configured' })
-    }
-
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS)
       return res
         .status(200)
         .json({ sent: false, reason: 'Email not configured on server' })
-    }
 
     let entryDetails = ''
     if (entryId) {
@@ -95,33 +79,26 @@ router.post('/emergency', async (req, res) => {
           ${entry.notes ? `<p><strong>Notes:</strong> ${entry.notes}</p>` : ''}
           ${
             entry.triage?.recommendation
-              ? `<p><strong>AI recommendation:</strong> ${entry.triage.recommendation}</p>`
+              ? `<p><strong>AI advice:</strong> ${entry.triage.recommendation}</p>`
               : ''
           }
         `
       }
     }
 
-    const transporter = getTransporter()
-    await transporter.sendMail({
+    await getTransporter().sendMail({
       from: `"SymptomTracker" <${process.env.EMAIL_USER}>`,
       to: user.emergencyContact.email,
       subject: `⚠️ Health Alert — ${user.name} may need attention`,
       html: `
-        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-          <h2 style="color: #dc2626;">Health Alert</h2>
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
+          <h2 style="color:#dc2626">Health Alert</h2>
           <p>Hi ${user.emergencyContact.name},</p>
-          <p><strong>${user.name}</strong> has logged a HIGH urgency symptom on SymptomTracker
-             and may need your support or medical attention.</p>
+          <p><strong>${user.name}</strong> has logged a HIGH urgency symptom and may need your support or medical attention.</p>
           ${entryDetails}
-          <p style="color: #6b7280; font-size: 13px; margin-top: 24px;">
-            This is an automated message from SymptomTracker.
-            If this was a mistake, no action is needed.
-          </p>
-        </div>
-      `,
+          <p style="color:#6b7280;font-size:13px;margin-top:24px">This is an automated message from SymptomTracker.</p>
+        </div>`,
     })
-
     res.status(200).json({ sent: true })
   } catch (err) {
     console.error('Emergency email error:', err.message)
@@ -129,24 +106,17 @@ router.post('/emergency', async (req, res) => {
   }
 })
 
-// ── POST /api/notifications/reminder ──────────────────────
-// Sends a daily reminder if the user hasn't logged today
-// This would normally be called by a cron job, but can also be triggered manually
+// POST /api/notifications/reminder
 router.post('/reminder', async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
-
-    if (!user.reminderEnabled) {
+    if (!user.reminderEnabled)
       return res.status(200).json({ sent: false, reason: 'Reminders disabled' })
-    }
-
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS)
       return res
         .status(200)
-        .json({ sent: false, reason: 'Email not configured on server' })
-    }
+        .json({ sent: false, reason: 'Email not configured' })
 
-    // Check if user already logged today
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
     const userId = new mongoose.Types.ObjectId(req.user.id)
@@ -155,55 +125,39 @@ router.post('/reminder', async (req, res) => {
       deletedAt: null,
       createdAt: { $gte: todayStart },
     })
-
-    if (todayLog) {
+    if (todayLog)
       return res
         .status(200)
         .json({ sent: false, reason: 'Already logged today' })
-    }
 
-    const transporter = getTransporter()
-    await transporter.sendMail({
+    await getTransporter().sendMail({
       from: `"SymptomTracker" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: '💊 Daily reminder — log your symptoms today',
       html: `
-        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-          <h2 style="color: #3B82F6;">Hi ${user.name},</h2>
-          <p>You haven't logged your symptoms yet today.</p>
-          <p>Tracking consistently helps the AI give you better triage advice and
-             lets you spot patterns in your health.</p>
-          <a href="${process.env.CLIENT_URL}/log"
-             style="display:inline-block; background:#111827; color:white; padding:12px 24px;
-                    border-radius:10px; text-decoration:none; margin-top:16px; font-size:14px;">
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
+          <h2 style="color:#3B82F6">Hi ${user.name},</h2>
+          <p>You haven't logged your symptoms yet today. Tracking consistently helps the AI give better advice.</p>
+          <a href="${process.env.CLIENT_URL}/log" style="display:inline-block;background:#111827;color:white;padding:12px 24px;border-radius:10px;text-decoration:none;margin-top:16px;font-size:14px">
             Log symptoms now
           </a>
-          <p style="color:#6b7280; font-size:13px; margin-top:24px;">
-            To disable reminders, go to Profile → Notifications in the app.
-          </p>
-        </div>
-      `,
+        </div>`,
     })
-
     res.status(200).json({ sent: true })
   } catch (err) {
-    console.error('Reminder email error:', err.message)
     res.status(500).json({ error: 'Failed to send reminder' })
   }
 })
 
-// ── POST /api/notifications/test ──────────────────────────
-// Sends a test email to verify the config is working
+// POST /api/notifications/test
 router.post('/test', async (req, res) => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS)
       return res
         .status(400)
         .json({ error: 'EMAIL_USER and EMAIL_PASS not set in .env' })
-    }
     const user = await User.findById(req.user.id)
-    const transporter = getTransporter()
-    await transporter.sendMail({
+    await getTransporter().sendMail({
       from: `"SymptomTracker" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: '✓ SymptomTracker email test',
@@ -211,7 +165,6 @@ router.post('/test', async (req, res) => {
     })
     res.status(200).json({ sent: true, to: user.email })
   } catch (err) {
-    console.error('Test email error:', err.message)
     res.status(500).json({ error: err.message })
   }
 })
