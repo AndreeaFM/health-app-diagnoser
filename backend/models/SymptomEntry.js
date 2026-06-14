@@ -51,7 +51,7 @@ const SymptomEntrySchema = new mongoose.Schema(
     },
     deletedAt: { type: Date, default: null },
   },
-  { timestamps: true }
+  { timestamps: true },
 )
 
 SymptomEntrySchema.index({ userId: 1, createdAt: -1 })

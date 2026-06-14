@@ -41,8 +41,8 @@ function StatDiff({ label, a, b, higherIsBad = true }) {
               better
                 ? 'text-green-600 dark:text-green-400'
                 : worse
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-gray-400'
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-gray-400'
             }`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -224,8 +224,8 @@ export default function Compare() {
                     better
                       ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800'
                       : worse
-                      ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
-                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
+                        ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+                        : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
                   }`}
                 >
                   <p
@@ -233,15 +233,15 @@ export default function Compare() {
                       better
                         ? 'text-green-700 dark:text-green-400'
                         : worse
-                        ? 'text-red-700 dark:text-red-400'
-                        : 'text-gray-700 dark:text-gray-300'
+                          ? 'text-red-700 dark:text-red-400'
+                          : 'text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     {better
                       ? '✓ Your health improved in Period B'
                       : worse
-                      ? '↑ Symptoms were worse in Period B'
-                      : '→ Health was similar in both periods'}
+                        ? '↑ Symptoms were worse in Period B'
+                        : '→ Health was similar in both periods'}
                   </p>
                 </div>
               )

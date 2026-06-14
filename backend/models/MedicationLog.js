@@ -26,8 +26,20 @@ const MedicationLogSchema = new mongoose.Schema(
     followUpNotes: { type: String, default: '' },
     severityBefore: { type: Number, min: 1, max: 4 },
     severityAfter: { type: Number, min: 1, max: 4 },
+
+    // Set when a doctor prescribes this (not self-logged)
+    prescribedBy: {
+      doctorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+      },
+      doctorName: { type: String, default: '' },
+      notes: { type: String, default: '' },
+      prescribedAt: { type: Date },
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 )
 
 MedicationLogSchema.index({ userId: 1, createdAt: -1 })

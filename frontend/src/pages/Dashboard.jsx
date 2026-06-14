@@ -15,6 +15,7 @@ import {
 } from 'recharts'
 import Layout from '../components/Layout'
 import SeverityBadge from '../components/SeverityBadge'
+import HealthInsights from '../components/HealthInsights'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../api'
 
@@ -121,7 +122,7 @@ function SevTooltip({ active, payload, label }) {
 export default function Dashboard() {
   const { user } = useAuth()
   const [stats, setStats] = useState(null)
-  const [flags, setFlags] = useState([])
+  const [insights, setInsights] = useState([])
   const [recent, setRecent] = useState([])
   const [days, setDays] = useState(30)
   const [loading, setLoading] = useState(true)
@@ -132,12 +133,12 @@ export default function Dashboard() {
     setError('')
     Promise.all([
       api.get(`/api/stats/summary?days=${days}`),
-      api.get('/api/stats/patterns'),
+      api.get('/api/insights'),
       api.get('/api/symptoms?page=1&limit=3'),
     ])
-      .then(([s, p, r]) => {
+      .then(([s, ins, r]) => {
         setStats(s)
-        setFlags(p.flags || [])
+        setInsights(ins.insights || [])
         setRecent(r.entries || [])
       })
       .catch((err) => setError(err.message))
@@ -186,7 +187,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <PatternAlert flags={flags} />
+        <HealthInsights insights={insights} onInsightsChange={setInsights} />
 
         {error && (
           <div className="mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
@@ -235,10 +236,14 @@ export default function Dashboard() {
               highlight={stats?.avgSeverity >= 3}
             />
             <StatCard
-              label="Recurring"
-              value={flags.length > 0 ? `${flags.length} found` : 'None'}
-              sub="last 7 days"
-              highlight={flags.length > 0}
+              label="Insights"
+              value={insights.length > 0 ? insights.length : 'None'}
+              sub={
+                insights.some((i) => i.level === 'urgent')
+                  ? 'urgent flagged'
+                  : 'last 14 days'
+              }
+              highlight={insights.some((i) => i.level === 'urgent')}
             />
           </div>
         )}
@@ -394,7 +399,7 @@ export default function Dashboard() {
                 <div className="space-y-3">
                   {stats.topTriggers.map((t, i) => {
                     const pct = Math.round(
-                      (t.count / stats.topTriggers[0].count) * 100
+                      (t.count / stats.topTriggers[0].count) * 100,
                     )
                     return (
                       <div key={t.name}>

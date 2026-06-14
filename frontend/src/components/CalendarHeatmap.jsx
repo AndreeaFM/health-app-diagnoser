@@ -46,7 +46,7 @@ function buildGrid(entries) {
       const dateStr = cur.toISOString().split('T')[0]
       week.push({
         date: dateStr,
-        severity: cur > today ? null : avgMap[dateStr] ?? 0,
+        severity: cur > today ? null : (avgMap[dateStr] ?? 0),
         month: cur.getMonth(),
         isFuture: cur > today,
       })
@@ -122,7 +122,7 @@ export default function CalendarHeatmap({ entries = [], dark = false }) {
                 </title>
               </g>
             )
-          })
+          }),
         )}
       </svg>
       <div className="flex items-center gap-2 mt-2 px-1">

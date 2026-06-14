@@ -12,6 +12,48 @@ const UserSchema = new mongoose.Schema(
       match: [/\S+@\S+\.\S+/, 'Invalid email'],
     },
     passwordHash: { type: String, required: true },
+
+    // ── Role-Based Access Control ─────────────────────────
+    // patient  = regular user (default)
+    // doctor   = can view shared patient histories (read-only)
+    // admin    = full platform access, can manage users & roles
+    role: {
+      type: String,
+      enum: ['patient', 'doctor', 'admin'],
+      default: 'patient',
+    },
+
+    // Only relevant for doctor role
+    doctorInfo: {
+      specialization: { type: String, default: '' },
+      licenseNumber: { type: String, default: '' },
+      hospital: { type: String, default: '' },
+    },
+
+    // Doctor verification workflow
+    doctorVerification: {
+      status: {
+        type: String,
+        enum: ['none', 'pending', 'approved', 'rejected'],
+        default: 'none',
+      },
+      requestedAt: { type: Date },
+      reviewedAt: { type: Date },
+      reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      rejectionReason: { type: String, default: '' },
+    },
+
+    // Is the account active? Admins can deactivate users
+    isActive: { type: Boolean, default: true },
+
+    // Onboarding — track which steps are done
+    onboarding: {
+      completed: { type: Boolean, default: false },
+      profileFilled: { type: Boolean, default: false },
+      firstEntryLogged: { type: Boolean, default: false },
+    },
+
+    // Patient profile fields
     dateOfBirth: { type: Date },
     gender: {
       type: String,
@@ -20,6 +62,8 @@ const UserSchema = new mongoose.Schema(
     medicalHistory: { type: [String], default: [] },
     allergies: { type: [String], default: [] },
     profileComplete: { type: Boolean, default: false },
+
+    // Emergency contact & notifications
     emergencyContact: {
       name: { type: String, default: '' },
       email: { type: String, default: '' },
@@ -27,7 +71,7 @@ const UserSchema = new mongoose.Schema(
     },
     reminderEnabled: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 )
 
 export default mongoose.model('User', UserSchema)

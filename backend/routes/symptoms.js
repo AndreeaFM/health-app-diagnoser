@@ -1,6 +1,7 @@
 import express from 'express'
 import SymptomEntry from '../models/SymptomEntry.js'
 import verifyToken from '../middleware/verifyToken.js'
+import { detectPatterns } from '../services/patternDetection.js'
 
 const router = express.Router()
 router.use(verifyToken)
@@ -45,6 +46,11 @@ router.post('/', async (req, res) => {
     })
 
     res.status(201).json({ entry })
+
+    // Run pattern detection asynchronously — doesn't block the response
+    detectPatterns(req.user.id).catch((err) =>
+      console.error('Pattern detection failed:', err.message),
+    )
   } catch (err) {
     console.error('Create symptom error:', err.message)
     res.status(500).json({ error: 'Failed to save symptom entry' })

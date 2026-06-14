@@ -7,16 +7,20 @@ const router = express.Router()
 
 const generateToken = (user) =>
   jwt.sign(
-    { id: user._id, email: user.email, name: user.name },
+    {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role, // ← role is now in the JWT
+    },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '777d' }
   )
 
-// POST /api/auth/register
+// POST /api/auth/register  — always creates a patient account
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body
-
     if (!name || !email || !password)
       return res
         .status(400)
@@ -33,7 +37,12 @@ router.post('/register', async (req, res) => {
         .json({ error: 'An account with this email already exists' })
 
     const passwordHash = await bcrypt.hash(password, 12)
-    const user = await User.create({ name, email, passwordHash })
+    const user = await User.create({
+      name,
+      email,
+      passwordHash,
+      role: 'patient',
+    })
     const token = generateToken(user)
 
     res.status(201).json({
@@ -42,7 +51,9 @@ router.post('/register', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role,
         profileComplete: user.profileComplete,
+        onboarding: user.onboarding,
       },
     })
   } catch (err) {
@@ -55,7 +66,6 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body
-
     if (!email || !password)
       return res.status(400).json({ error: 'Email and password are required' })
 
@@ -63,19 +73,25 @@ router.post('/login', async (req, res) => {
     if (!user)
       return res.status(401).json({ error: 'Invalid email or password' })
 
+    if (!user.isActive)
+      return res
+        .status(403)
+        .json({ error: 'Account has been deactivated. Contact support.' })
+
     const isMatch = await bcrypt.compare(password, user.passwordHash)
     if (!isMatch)
       return res.status(401).json({ error: 'Invalid email or password' })
 
     const token = generateToken(user)
-
     res.status(200).json({
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role,
         profileComplete: user.profileComplete,
+        onboarding: user.onboarding,
       },
     })
   } catch (err) {

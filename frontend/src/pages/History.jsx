@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 import SeverityBadge from '../components/SeverityBadge'
-import { useTheme } from '../context/ThemeContext'
+import { useTheme } from '../hooks/useTheme'
 import { api } from '../api'
 
 const VITE_API = import.meta.env.VITE_API_URL || 'http://localhost:5001'
@@ -161,8 +161,8 @@ function EntryCard({ entry, onDelete }) {
             tri.urgency === 'high'
               ? 'bg-red-50 dark:bg-red-950/30'
               : tri.urgency === 'moderate'
-              ? 'bg-amber-50 dark:bg-amber-950/30'
-              : 'bg-green-50 dark:bg-green-950/30'
+                ? 'bg-amber-50 dark:bg-amber-950/30'
+                : 'bg-green-50 dark:bg-green-950/30'
           }`}
         >
           <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
@@ -223,7 +223,7 @@ export default function History() {
       if (filterTo) params.set('to', filterTo)
       return `/api/symptoms?${params}`
     },
-    [filterFrom, filterTo]
+    [filterFrom, filterTo],
   )
 
   const fetchEntries = useCallback(
@@ -242,7 +242,7 @@ export default function History() {
         setLoading(false)
       }
     },
-    [buildQuery]
+    [buildQuery],
   )
 
   useEffect(() => {

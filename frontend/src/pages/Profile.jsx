@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 import { api } from '../api'
 
 const GENDERS = ['male', 'female', 'other', 'prefer_not_to_say']
@@ -189,7 +189,9 @@ export default function Profile() {
     try {
       const data = await api.post('/api/notifications/test', {})
       alert(
-        data.sent ? `Test email sent to ${data.to}` : `Not sent: ${data.reason}`
+        data.sent
+          ? `Test email sent to ${data.to}`
+          : `Not sent: ${data.reason}`,
       )
     } catch (err) {
       alert('Error: ' + err.message)

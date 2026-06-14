@@ -3,7 +3,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 
-const NAV = [
+// Nav items by role
+const PATIENT_NAV = [
   {
     to: '/dashboard',
     label: 'Dashboard',
@@ -105,7 +106,167 @@ const NAV = [
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
         <path
-          d="M9 3L15 3M12 3v3M6.6 8A6 6 0 0017.4 8H6.6zM5 8h14l-1.405 9.1A2 2 0 0115.616 19H8.384a2 2 0 01-1.979-1.9L5 8z"
+          d="M19.5 9.5l-7-7-9 9 7 7 9-9z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M13 6l5 5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    to: '/share',
+    label: 'Share',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    to: '/profile',
+    label: 'Profile',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    ),
+  },
+]
+
+const DOCTOR_NAV = [
+  {
+    to: '/doctor/patients',
+    label: 'My patients',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
+        <path
+          d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    to: '/profile',
+    label: 'Profile',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    ),
+  },
+]
+
+const ADMIN_NAV = [
+  {
+    to: '/admin',
+    label: 'Admin panel',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    to: '/dashboard',
+    label: 'Dashboard',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect
+          x="3"
+          y="3"
+          width="7"
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <rect
+          x="14"
+          y="3"
+          width="7"
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <rect
+          x="3"
+          y="14"
+          width="7"
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <rect
+          x="14"
+          y="14"
+          width="7"
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+      </svg>
+    ),
+  },
+  {
+    to: '/history',
+    label: 'Entries',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M12 8v4l3 3"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M3.05 11a9 9 0 1 0 .5-3M3 4v4h4"
           stroke="currentColor"
           strokeWidth="1.5"
           strokeLinecap="round"
@@ -183,10 +344,19 @@ function ThemeToggle() {
   )
 }
 
+const ROLE_BADGE = {
+  patient: 'bg-blue-50   dark:bg-blue-950   text-blue-700   dark:text-blue-400',
+  doctor:
+    'bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-400',
+  admin: 'bg-red-50    dark:bg-red-950    text-red-700    dark:text-red-400',
+}
+
 export default function Layout({ children }) {
-  const { user, logout } = useAuth()
+  const { user, logout, isAdmin, isDoctor } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+
+  const navItems = isAdmin ? ADMIN_NAV : isDoctor ? DOCTOR_NAV : PATIENT_NAV
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
@@ -207,13 +377,13 @@ export default function Layout({ children }) {
         </div>
 
         <nav className="flex flex-col gap-1 flex-1">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <NavItem key={item.to} item={item} />
           ))}
         </nav>
 
         <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
-          <div className="flex items-center justify-between px-2 mb-3">
+          <div className="flex items-center justify-between px-2 mb-2">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-semibold text-gray-600 dark:text-gray-400 shrink-0">
                 {user?.name?.charAt(0).toUpperCase()}
@@ -227,6 +397,17 @@ export default function Layout({ children }) {
             </div>
             <ThemeToggle />
           </div>
+          {user?.role && (
+            <div className="px-2 mb-3">
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  ROLE_BADGE[user.role] || ''
+                }`}
+              >
+                {user.role}
+              </span>
+            </div>
+          )}
           <button
             onClick={() => {
               logout()
@@ -285,7 +466,7 @@ export default function Layout({ children }) {
       {open && (
         <div className="md:hidden fixed top-12 left-0 right-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 shadow-lg">
           <nav className="flex flex-col gap-1 mb-3">
-            {NAV.map((item) => (
+            {navItems.map((item) => (
               <NavItem
                 key={item.to}
                 item={item}
@@ -294,9 +475,20 @@ export default function Layout({ children }) {
             ))}
           </nav>
           <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex items-center justify-between">
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {user?.email}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {user?.email}
+              </span>
+              {user?.role && (
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    ROLE_BADGE[user.role] || ''
+                  }`}
+                >
+                  {user.role}
+                </span>
+              )}
+            </div>
             <button
               onClick={() => {
                 logout()
