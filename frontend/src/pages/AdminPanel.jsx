@@ -830,14 +830,20 @@ export default function AdminPanel() {
                   Medication prescribed
                 </option>
                 <option value="share_created">Share created</option>
+                <option value="share_accepted">Share accepted</option>
                 <option value="share_revoked">Share revoked</option>
                 <option value="admin_role_changed">Role changed</option>
+                <option value="doctor_verification_requested">
+                  Doctor verification requested
+                </option>
                 <option value="doctor_verification_approved">
                   Doctor approved
                 </option>
                 <option value="doctor_verification_rejected">
                   Doctor rejected
                 </option>
+                <option value="admin_user_activated">User activated</option>
+                <option value="admin_user_deactivated">User deactivated</option>
                 <option value="admin_user_deleted">User deleted</option>
               </select>
               <button

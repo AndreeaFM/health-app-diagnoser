@@ -2,6 +2,7 @@ import express from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
+import { audit } from '../services/audit.js'
 
 const router = express.Router()
 
@@ -14,13 +15,15 @@ const generateToken = (user) =>
       role: user.role, // ← role is now in the JWT
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '777d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '777d' },
   )
 
-// POST /api/auth/register  — always creates a patient account
+// POST /api/auth/register
+// Creates a patient account. If requestDoctor is true, the account is still a
+// patient but flagged for doctor verification (an admin approves it later).
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body
+    const { name, email, password, requestDoctor, licenseNumber } = req.body
     if (!name || !email || !password)
       return res
         .status(400)
@@ -42,11 +45,30 @@ router.post('/register', async (req, res) => {
       email,
       passwordHash,
       role: 'patient',
+      ...(requestDoctor
+        ? {
+            doctorInfo: { licenseNumber: licenseNumber || '' },
+            doctorVerification: {
+              status: 'pending',
+              requestedAt: new Date(),
+            },
+          }
+        : {}),
     })
+
+    if (requestDoctor) {
+      audit(
+        { id: user._id, name: user.name, role: 'patient' },
+        'doctor_verification_requested',
+        { id: user._id, name: user.name },
+      )
+    }
+
     const token = generateToken(user)
 
     res.status(201).json({
       token,
+      doctorRequested: !!requestDoctor,
       user: {
         id: user._id,
         name: user.name,
@@ -54,6 +76,7 @@ router.post('/register', async (req, res) => {
         role: user.role,
         profileComplete: user.profileComplete,
         onboarding: user.onboarding,
+        doctorVerification: user.doctorVerification,
       },
     })
   } catch (err) {

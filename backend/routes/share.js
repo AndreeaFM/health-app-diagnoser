@@ -5,6 +5,7 @@ import ShareToken from '../models/ShareToken.js'
 import SymptomEntry from '../models/SymptomEntry.js'
 import User from '../models/User.js'
 import verifyToken, { requireDoctor } from '../middleware/verifyToken.js'
+import { audit } from '../services/audit.js'
 
 const router = express.Router()
 
@@ -18,9 +19,13 @@ router.post('/generate', verifyToken, async (req, res) => {
         .json({ error: 'Only patients can generate share links' })
     }
 
-    const { label } = req.body
+    const { label, expiresInDays } = req.body
+    const days = Number(expiresInDays)
+    // Default 30 days; cap at 10 years. Anything invalid falls back to 30.
+    const validDays =
+      Number.isFinite(days) && days > 0 ? Math.min(days, 3650) : 30
     const token = crypto.randomBytes(32).toString('hex')
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+    const expiresAt = new Date(Date.now() + validDays * 24 * 60 * 60 * 1000)
 
     const shareToken = await ShareToken.create({
       patientId: req.user.id,
@@ -30,6 +35,18 @@ router.post('/generate', verifyToken, async (req, res) => {
     })
 
     const shareUrl = `${process.env.CLIENT_URL}/doctor/view/${token}`
+
+    audit(
+      {
+        id: req.user.id,
+        name: req.user.name || 'Patient',
+        role: req.user.role,
+      },
+      'share_created',
+      null,
+      { label: shareToken.label, tokenId: shareToken._id },
+    )
+
     res.status(201).json({ shareToken, shareUrl })
   } catch (err) {
     console.error('Generate share error:', err.message)
@@ -54,6 +71,35 @@ router.get('/my-tokens', verifyToken, async (req, res) => {
   }
 })
 
+// ── PATIENT: extend / change expiry of an existing token ──
+// PATCH /api/share/:tokenId/extend  { expiresInDays }
+router.patch('/:tokenId/extend', verifyToken, async (req, res) => {
+  try {
+    const days = Number(req.body.expiresInDays)
+    if (!Number.isFinite(days) || days <= 0)
+      return res
+        .status(400)
+        .json({ error: 'expiresInDays must be a positive number' })
+
+    const shareToken = await ShareToken.findOne({
+      _id: req.params.tokenId,
+      patientId: req.user.id,
+    })
+    if (!shareToken) return res.status(404).json({ error: 'Token not found' })
+
+    // Extend relative to now (re-activates an expired link too)
+    shareToken.expiresAt = new Date(
+      Date.now() + Math.min(days, 3650) * 24 * 60 * 60 * 1000,
+    )
+    shareToken.active = true
+    await shareToken.save()
+
+    res.status(200).json({ shareToken })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to extend share link' })
+  }
+})
+
 // ── PATIENT: revoke a share token ────────────────────────
 // DELETE /api/share/:tokenId
 router.delete('/:tokenId', verifyToken, async (req, res) => {
@@ -66,6 +112,18 @@ router.delete('/:tokenId', verifyToken, async (req, res) => {
 
     shareToken.active = false
     await shareToken.save()
+
+    audit(
+      {
+        id: req.user.id,
+        name: req.user.name || 'Patient',
+        role: req.user.role,
+      },
+      'share_revoked',
+      null,
+      { tokenId: shareToken._id },
+    )
+
     res.status(200).json({ message: 'Share link revoked' })
   } catch (err) {
     res.status(500).json({ error: 'Failed to revoke token' })
@@ -123,6 +181,17 @@ router.post('/accept/:token', verifyToken, requireDoctor, async (req, res) => {
       shareToken.doctorId = req.user.id
       shareToken.acceptedAt = new Date()
       await shareToken.save()
+
+      audit(
+        {
+          id: req.user.id,
+          name: req.user.name || 'Doctor',
+          role: req.user.role,
+        },
+        'share_accepted',
+        { id: shareToken.patientId, name: '' },
+        { tokenId: shareToken._id },
+      )
     }
 
     res
@@ -145,6 +214,33 @@ router.get('/patient/:token', verifyToken, requireDoctor, async (req, res) => {
       return res.status(404).json({ error: 'Invalid or revoked share link' })
     if (shareToken.expiresAt < new Date())
       return res.status(410).json({ error: 'Share link has expired' })
+
+    // Viewing a shared record links this doctor to the share (so the patient
+    // shows up under "My patients"). First doctor to open the link is recorded.
+    if (!shareToken.doctorId) {
+      shareToken.doctorId = req.user.id
+      shareToken.acceptedAt = new Date()
+      await shareToken.save()
+
+      audit(
+        {
+          id: req.user.id,
+          name: req.user.name || 'Doctor',
+          role: req.user.role,
+        },
+        'share_accepted',
+        { id: shareToken.patientId, name: '' },
+        { tokenId: shareToken._id, via: 'view' },
+      )
+    } else if (
+      String(shareToken.doctorId) !== String(req.user.id) &&
+      req.user.role !== 'admin'
+    ) {
+      // The link is already claimed by another doctor.
+      return res
+        .status(403)
+        .json({ error: 'This share link is linked to another doctor' })
+    }
 
     const patientId = new mongoose.Types.ObjectId(shareToken.patientId)
 

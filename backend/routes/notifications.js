@@ -19,7 +19,7 @@ function getTransporter() {
 router.get('/settings', async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      'emergencyContact reminderEnabled'
+      'emergencyContact reminderEnabled',
     )
     res.status(200).json({
       emergencyContact: user.emergencyContact || {

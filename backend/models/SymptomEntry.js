@@ -32,7 +32,6 @@ const SymptomEntrySchema = new mongoose.Schema(
     notes: { type: String, default: '' },
     mood: {
       type: String,
-      enum: ['Good', 'Okay', 'Low', 'Anxious', 'Tired', ''],
       default: '',
     },
     triage: {

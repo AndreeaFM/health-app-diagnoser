@@ -35,7 +35,8 @@ function buildUserPrompt(user, entry, recentEntries) {
   const profile = []
   if (user.dateOfBirth) {
     const age = Math.floor(
-      (Date.now() - new Date(user.dateOfBirth)) / (365.25 * 24 * 60 * 60 * 1000)
+      (Date.now() - new Date(user.dateOfBirth)) /
+        (365.25 * 24 * 60 * 60 * 1000),
     )
     profile.push(`Age: ${age}`)
   }
@@ -54,7 +55,7 @@ function buildUserPrompt(user, entry, recentEntries) {
               month: 'short',
             })
             return `  ${i + 1}. ${date}: ${e.symptomTypes.join(
-              ', '
+              ', ',
             )} in ${e.bodyAreas.join(', ')} — severity ${
               e.severity
             }/4, duration ${e.duration}${
@@ -209,7 +210,7 @@ Keep responses under 100 words. Be warm and reassuring but honest about when to 
 ${
   contextEntry
     ? `\nThe patient recently logged: ${contextEntry.symptomTypes.join(
-        ', '
+        ', ',
       )} in ${contextEntry.bodyAreas.join(', ')}, severity ${
         contextEntry.severity
       }/4, duration ${contextEntry.duration}.`

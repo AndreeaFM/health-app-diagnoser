@@ -70,6 +70,50 @@ function Input({ value, onChange, type = 'text', placeholder, ...props }) {
   )
 }
 
+function DoctorRequestFields({ docForm, setDocForm, onSubmit, submitting }) {
+  const set = (field) => (e) =>
+    setDocForm((p) => ({ ...p, [field]: e.target.value }))
+  return (
+    <div className="space-y-4">
+      <div>
+        <FieldLabel>License number *</FieldLabel>
+        <Input
+          value={docForm.licenseNumber}
+          onChange={set('licenseNumber')}
+          placeholder="e.g. RO-123456"
+        />
+      </div>
+      <div>
+        <FieldLabel>Specialization</FieldLabel>
+        <Input
+          value={docForm.specialization}
+          onChange={set('specialization')}
+          placeholder="e.g. General practice"
+        />
+      </div>
+      <div>
+        <FieldLabel>Hospital / clinic</FieldLabel>
+        <Input
+          value={docForm.hospital}
+          onChange={set('hospital')}
+          placeholder="e.g. County Hospital"
+        />
+      </div>
+      <button
+        onClick={onSubmit}
+        disabled={submitting || !docForm.licenseNumber.trim()}
+        className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all ${
+          submitting || !docForm.licenseNumber.trim()
+            ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
+            : 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300'
+        }`}
+      >
+        {submitting ? 'Submitting…' : 'Request doctor access'}
+      </button>
+    </div>
+  )
+}
+
 function TagToggle({ options, selected, onToggle }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -113,6 +157,14 @@ export default function Profile() {
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
 
+  const [verification, setVerification] = useState({ status: 'none' })
+  const [docForm, setDocForm] = useState({
+    specialization: '',
+    licenseNumber: '',
+    hospital: '',
+  })
+  const [requestingDoctor, setRequestingDoctor] = useState(false)
+
   useEffect(() => {
     Promise.all([
       api.get('/api/users/me'),
@@ -133,6 +185,12 @@ export default function Profile() {
             phone: '',
           },
           reminderEnabled: notif.reminderEnabled || false,
+        })
+        setVerification(u.doctorVerification || { status: 'none' })
+        setDocForm({
+          specialization: u.doctorInfo?.specialization || '',
+          licenseNumber: u.doctorInfo?.licenseNumber || '',
+          hospital: u.doctorInfo?.hospital || '',
         })
       })
       .catch(() => setError('Failed to load profile'))
@@ -181,6 +239,26 @@ export default function Profile() {
       setError(err.message)
     } finally {
       setSavingNotif(false)
+    }
+  }
+
+  const handleRequestDoctor = async () => {
+    if (!docForm.licenseNumber.trim()) {
+      setError('A license number is required to request doctor access')
+      return
+    }
+    setRequestingDoctor(true)
+    setError('')
+    try {
+      const { doctorVerification } = await api.post(
+        '/api/users/request-doctor',
+        docForm,
+      )
+      setVerification(doctorVerification)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setRequestingDoctor(false)
     }
   }
 
@@ -506,6 +584,45 @@ export default function Profile() {
         >
           {savingNotif ? 'Saving…' : 'Save notification settings'}
         </button>
+
+        {/* Doctor access — only relevant for patient accounts */}
+        {user?.role === 'patient' && (
+          <div className="mt-4">
+            <Section
+              title="Doctor access"
+              subtitle="Are you a clinician? Request a verified doctor account to view patients who share their records with you."
+            >
+              {verification.status === 'pending' ? (
+                <div className="px-4 py-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl text-sm text-amber-700 dark:text-amber-400">
+                  Your request is pending review by an administrator.
+                </div>
+              ) : verification.status === 'rejected' ? (
+                <div className="space-y-3">
+                  <div className="px-4 py-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400">
+                    Your previous request was rejected
+                    {verification.rejectionReason
+                      ? `: ${verification.rejectionReason}`
+                      : '.'}{' '}
+                    You can update your details and request again.
+                  </div>
+                  <DoctorRequestFields
+                    docForm={docForm}
+                    setDocForm={setDocForm}
+                    onSubmit={handleRequestDoctor}
+                    submitting={requestingDoctor}
+                  />
+                </div>
+              ) : (
+                <DoctorRequestFields
+                  docForm={docForm}
+                  setDocForm={setDocForm}
+                  onSubmit={handleRequestDoctor}
+                  submitting={requestingDoctor}
+                />
+              )}
+            </Section>
+          </div>
+        )}
       </div>
     </Layout>
   )

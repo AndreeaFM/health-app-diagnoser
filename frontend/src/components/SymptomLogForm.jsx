@@ -5,12 +5,27 @@ import TriageResult from './TriageResult'
 
 const BODY_AREAS = [
   'Head',
-  'Chest',
-  'Stomach',
-  'Back',
+  'Eyes',
+  'Ears',
+  'Nose',
+  'Mouth/Jaw',
+  'Neck',
   'Throat',
-  'Limbs',
+  'Shoulders',
+  'Chest',
+  'Upper back',
+  'Lower back',
+  'Stomach',
+  'Abdomen',
+  'Pelvis',
+  'Arms',
+  'Hands',
+  'Hips',
+  'Legs',
+  'Knees',
+  'Feet',
   'Skin',
+  'Whole body',
   'Other',
 ]
 const SYMPTOM_TYPES = [
@@ -22,6 +37,7 @@ const SYMPTOM_TYPES = [
   'Cough',
   'Dizziness',
   'Shortness of breath',
+  'Other',
 ]
 const TRIGGERS = [
   'Stress',
@@ -32,8 +48,9 @@ const TRIGGERS = [
   'Weather',
   'Exercise',
   'Unknown',
+  'Other',
 ]
-const MOODS = ['Good', 'Okay', 'Low', 'Anxious', 'Tired']
+const MOODS = ['Good', 'Okay', 'Low', 'Anxious', 'Tired', 'Other']
 const DURATIONS = ['Under 1h', '1–6h', 'Half day', 'All day', 'Multi-day']
 const SEVERITIES = [
   {
@@ -60,13 +77,17 @@ const SEVERITIES = [
 
 const EMPTY = {
   bodyAreas: [],
+  bodyAreaOther: '',
   symptomTypes: [],
+  symptomTypeOther: '',
   severity: null,
   duration: null,
   triggers: [],
+  triggerOther: '',
   medication: '',
   notes: '',
   mood: null,
+  moodOther: '',
 }
 
 function Label({ children, required }) {
@@ -102,6 +123,19 @@ function ChipGroup({ options, selected, onToggle, multi = true }) {
   )
 }
 
+function OtherInput({ value, onChange, placeholder }) {
+  return (
+    <input
+      type="text"
+      autoFocus
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full mt-3 px-3 py-2 text-sm border border-gray-200 bg-white text-gray-900 placeholder-gray-400 rounded-xl focus:outline-none focus:border-blue-400 transition"
+    />
+  )
+}
+
 export default function SymptomLogForm() {
   const navigate = useNavigate()
   const [form, setForm] = useState(EMPTY)
@@ -123,19 +157,46 @@ export default function SymptomLogForm() {
 
   const set = (field) => (val) => setForm((prev) => ({ ...prev, [field]: val }))
 
+  const needsBodyOther = form.bodyAreas.includes('Other')
+  const needsSymptomOther = form.symptomTypes.includes('Other')
+  const needsTriggerOther = form.triggers.includes('Other')
+  const needsMoodOther = form.mood === 'Other'
+
+  // Replace the literal "Other" chip with the user-typed value so the saved
+  // entry stores the real area/symptom/trigger instead of "Other".
+  // For optional fields, pass dropIfEmpty so a blank "Other" is removed
+  // rather than stored literally.
+  const withOther = (list, customText, { dropIfEmpty = false } = {}) => {
+    if (!list.includes('Other')) return list
+    const custom = customText.trim()
+    if (custom) return list.map((v) => (v === 'Other' ? custom : v))
+    return dropIfEmpty ? list.filter((v) => v !== 'Other') : list
+  }
+
   const isValid =
     form.bodyAreas.length > 0 &&
     form.symptomTypes.length > 0 &&
     form.severity &&
-    form.duration
+    form.duration &&
+    (!needsBodyOther || form.bodyAreaOther.trim()) &&
+    (!needsSymptomOther || form.symptomTypeOther.trim())
 
   const handleSubmit = async () => {
     if (!isValid) return
     setSaving(true)
     setError('')
     try {
-      // Step 1: save the entry
-      const { entry } = await api.post('/api/symptoms', form)
+      // Step 1: save the entry (swap "Other" for the typed custom value)
+      const payload = {
+        ...form,
+        bodyAreas: withOther(form.bodyAreas, form.bodyAreaOther),
+        symptomTypes: withOther(form.symptomTypes, form.symptomTypeOther),
+        triggers: withOther(form.triggers, form.triggerOther, {
+          dropIfEmpty: true,
+        }),
+        mood: form.mood === 'Other' ? form.moodOther.trim() || null : form.mood,
+      }
+      const { entry } = await api.post('/api/symptoms', payload)
       setSavedEntry(entry)
 
       // Step 2: call triage (non-blocking UI — show loading state)
@@ -279,6 +340,13 @@ export default function SymptomLogForm() {
           selected={form.bodyAreas}
           onToggle={toggle('bodyAreas')}
         />
+        {needsBodyOther && (
+          <OtherInput
+            value={form.bodyAreaOther}
+            onChange={set('bodyAreaOther')}
+            placeholder="Which body area? e.g. left wrist"
+          />
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-4">
@@ -288,6 +356,13 @@ export default function SymptomLogForm() {
           selected={form.symptomTypes}
           onToggle={toggle('symptomTypes')}
         />
+        {needsSymptomOther && (
+          <OtherInput
+            value={form.symptomTypeOther}
+            onChange={set('symptomTypeOther')}
+            placeholder="Describe the symptom… e.g. tingling"
+          />
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-4">
@@ -338,6 +413,13 @@ export default function SymptomLogForm() {
             selected={form.triggers}
             onToggle={toggle('triggers')}
           />
+          {needsTriggerOther && (
+            <OtherInput
+              value={form.triggerOther}
+              onChange={set('triggerOther')}
+              placeholder="What triggered it? e.g. caffeine"
+            />
+          )}
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-4">
           <Label>Medication taken</Label>
@@ -370,6 +452,13 @@ export default function SymptomLogForm() {
           onToggle={(val) => set('mood')(val === form.mood ? null : val)}
           multi={false}
         />
+        {needsMoodOther && (
+          <OtherInput
+            value={form.moodOther}
+            onChange={set('moodOther')}
+            placeholder="How are you feeling? e.g. irritable"
+          />
+        )}
       </div>
 
       <button
@@ -386,7 +475,10 @@ export default function SymptomLogForm() {
 
       {!isValid && (
         <p className="text-xs text-center text-gray-400">
-          Body area, symptom type, severity and duration are required
+          {(needsBodyOther && !form.bodyAreaOther.trim()) ||
+          (needsSymptomOther && !form.symptomTypeOther.trim())
+            ? 'Please describe your "Other" selection above'
+            : 'Body area, symptom type, severity and duration are required'}
         </p>
       )}
     </div>

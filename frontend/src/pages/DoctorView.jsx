@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   BarChart,
   Bar,
@@ -42,13 +42,13 @@ function formatDate(iso) {
 
 // ── Doctor note widget per entry ──────────────────────────
 function DoctorNoteWidget({ entry, patientId, existingNote }) {
-  const [open, setOpen] = useState(!!existingNote)
+  const [saved, setSaved] = useState(existingNote || null)
+  const [editing, setEditing] = useState(false)
   const [note, setNote] = useState(existingNote?.note || '')
   const [visibility, setVisibility] = useState(
     existingNote?.visibility || 'shared',
   )
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
 
   const handleSave = async () => {
     if (!note.trim()) return
@@ -57,11 +57,11 @@ function DoctorNoteWidget({ entry, patientId, existingNote }) {
       await api.post('/api/doctor/notes', {
         entryId: entry._id,
         patientId,
-        note,
+        note: note.trim(),
         visibility,
       })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      setSaved({ note: note.trim(), visibility })
+      setEditing(false)
     } catch (err) {
       alert('Failed to save note: ' + err.message)
     } finally {
@@ -69,10 +69,46 @@ function DoctorNoteWidget({ entry, patientId, existingNote }) {
     }
   }
 
-  if (!open) {
+  // ── Display mode: a saved note exists and we're not editing ──
+  if (saved && !editing) {
+    return (
+      <div className="mt-3 border-t border-gray-100 dark:border-gray-800 pt-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            Your clinical note
+          </p>
+          <span
+            className={`text-[11px] px-2 py-0.5 rounded-full ${
+              saved.visibility === 'shared'
+                ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            {saved.visibility === 'shared' ? 'Visible to patient' : 'Private'}
+          </span>
+        </div>
+        <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+          {saved.note}
+        </p>
+        <button
+          onClick={() => {
+            setNote(saved.note)
+            setVisibility(saved.visibility)
+            setEditing(true)
+          }}
+          className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          Edit note
+        </button>
+      </div>
+    )
+  }
+
+  // ── No note yet and not editing → "Add" button ──
+  if (!editing) {
     return (
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => setEditing(true)}
         className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -88,6 +124,7 @@ function DoctorNoteWidget({ entry, patientId, existingNote }) {
     )
   }
 
+  // ── Editing mode ──
   return (
     <div className="mt-3 border-t border-gray-100 dark:border-gray-800 pt-3">
       <div className="flex items-center justify-between mb-2">
@@ -118,10 +155,14 @@ function DoctorNoteWidget({ entry, patientId, existingNote }) {
           disabled={saving || !note.trim()}
           className="text-xs px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 disabled:opacity-40 transition"
         >
-          {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save note'}
+          {saving ? 'Saving…' : 'Save note'}
         </button>
         <button
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            setEditing(false)
+            setNote(saved?.note || '')
+            setVisibility(saved?.visibility || 'shared')
+          }}
           className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
         >
           Cancel
@@ -252,11 +293,20 @@ function AcceptView({ token }) {
 // ── Main doctor view ──────────────────────────────────────
 export default function DoctorView() {
   const { token } = useParams()
-  const { isDoctor, isAdmin, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+  const { user, logout, isDoctor, isAdmin, isAuthenticated } = useAuth()
   const [data, setData] = useState(null)
+  const [prescriptions, setPrescriptions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [accepted, setAccepted] = useState(false)
+
+  const loadPrescriptions = (patientId) => {
+    api
+      .get(`/api/doctor/prescriptions/${patientId}`)
+      .then((d) => setPrescriptions(d.prescriptions || []))
+      .catch(() => {})
+  }
 
   useEffect(() => {
     if (!isAuthenticated || (!isDoctor && !isAdmin)) {
@@ -268,6 +318,7 @@ export default function DoctorView() {
       .then((d) => {
         setData(d)
         setAccepted(true)
+        if (d.patient?._id) loadPrescriptions(d.patient._id)
       })
       .catch((err) => {
         if (err.message.includes('404') || err.message.includes('revoked')) {
@@ -315,6 +366,45 @@ export default function DoctorView() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      {/* Doctor nav bar — identity + navigation (this page has no sidebar) */}
+      <div className="bg-gray-900 dark:bg-gray-950 border-b border-gray-800 px-6 py-2.5">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
+          <Link
+            to="/doctor/patients"
+            className="text-xs text-gray-300 hover:text-white flex items-center gap-1.5"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M15 18l-6-6 6-6"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            My patients
+          </Link>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">
+              Signed in as{' '}
+              <span className="text-gray-200 font-medium">
+                {user?.name || user?.email}
+              </span>
+              {user?.role ? ` · ${user.role}` : ''}
+            </span>
+            <button
+              onClick={() => {
+                logout()
+                navigate('/login')
+              }}
+              className="text-xs text-gray-300 hover:text-white border border-gray-700 rounded-lg px-2.5 py-1 transition"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
@@ -407,7 +497,53 @@ export default function DoctorView() {
         </div>
 
         {/* Doctor actions */}
-        <PrescribeForm patientId={patient._id} patientName={patient.name} />
+        <PrescribeForm
+          patientId={patient._id}
+          patientName={patient.name}
+          onPrescribed={() => loadPrescriptions(patient._id)}
+        />
+
+        {/* Prescriptions this doctor has given */}
+        {prescriptions.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mt-6">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              Your prescriptions ({prescriptions.length})
+            </h2>
+            <div className="space-y-2">
+              {prescriptions.map((p) => (
+                <div
+                  key={p._id}
+                  className="flex items-start justify-between gap-3 px-3 py-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {p.medicationName}
+                      {p.dosage ? (
+                        <span className="text-gray-400 font-normal">
+                          {' '}
+                          · {p.dosage}
+                        </span>
+                      ) : null}
+                    </p>
+                    {p.prescribedBy?.notes ? (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {p.prescribedBy.notes}
+                      </p>
+                    ) : null}
+                  </div>
+                  <span className="shrink-0 text-xs text-gray-400">
+                    {new Date(
+                      p.prescribedBy?.prescribedAt || p.createdAt,
+                    ).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">

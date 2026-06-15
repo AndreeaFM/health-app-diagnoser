@@ -1,14 +1,23 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api'
 
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const redirect = searchParams.get('redirect')
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const landingFor = (user) => {
+    if (redirect) return redirect
+    if (user.role === 'admin') return '/admin'
+    if (user.role === 'doctor') return '/doctor/patients'
+    return '/dashboard'
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -17,7 +26,7 @@ export default function Login() {
     try {
       const data = await api.post('/api/auth/login', form)
       login(data.token, data.user)
-      navigate('/dashboard')
+      navigate(landingFor(data.user))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -53,7 +62,7 @@ export default function Login() {
                 onChange={(e) =>
                   setForm((p) => ({ ...p, email: e.target.value }))
                 }
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-blue-400 transition"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-blue-400 transition"
               />
             </div>
             <div>
@@ -68,7 +77,7 @@ export default function Login() {
                 onChange={(e) =>
                   setForm((p) => ({ ...p, password: e.target.value }))
                 }
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-blue-400 transition"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-blue-400 transition"
               />
             </div>
             <button
@@ -82,7 +91,11 @@ export default function Login() {
           <p className="text-sm text-center text-gray-500 mt-6">
             No account?{' '}
             <Link
-              to="/register"
+              to={
+                redirect
+                  ? `/register?redirect=${encodeURIComponent(redirect)}`
+                  : '/register'
+              }
               className="text-blue-600 hover:underline font-medium"
             >
               Create one

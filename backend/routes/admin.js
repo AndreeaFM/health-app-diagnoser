@@ -193,6 +193,13 @@ router.patch('/users/:id/status', async (req, res) => {
     ).select('-passwordHash')
 
     if (!user) return res.status(404).json({ error: 'User not found' })
+
+    audit(
+      { id: req.user.id, name: req.user.name || 'Admin', role: 'admin' },
+      isActive ? 'admin_user_activated' : 'admin_user_deactivated',
+      { id: user._id, name: user.name },
+    )
+
     res.status(200).json({ user })
   } catch (err) {
     res.status(500).json({ error: 'Failed to update user status' })
@@ -234,6 +241,10 @@ router.delete('/users/:id', async (req, res) => {
         .status(400)
         .json({ error: 'You cannot delete your own account' })
 
+    // Capture the user's name before deletion so the audit entry is meaningful
+    const target = await User.findById(req.params.id).select('name')
+    if (!target) return res.status(404).json({ error: 'User not found' })
+
     await Promise.all([
       User.findByIdAndDelete(req.params.id),
       SymptomEntry.deleteMany({ userId: req.params.id }),
@@ -241,6 +252,12 @@ router.delete('/users/:id', async (req, res) => {
         $or: [{ patientId: req.params.id }, { doctorId: req.params.id }],
       }),
     ])
+
+    audit(
+      { id: req.user.id, name: req.user.name || 'Admin', role: 'admin' },
+      'admin_user_deleted',
+      { id: req.params.id, name: target.name },
+    )
 
     res.status(200).json({ message: 'User and all associated data deleted' })
   } catch (err) {

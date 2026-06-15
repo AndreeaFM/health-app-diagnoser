@@ -1,5 +1,6 @@
 import express from 'express'
 import SymptomEntry from '../models/SymptomEntry.js'
+import MedicationLog from '../models/MedicationLog.js'
 import verifyToken from '../middleware/verifyToken.js'
 import { detectPatterns } from '../services/patternDetection.js'
 
@@ -44,6 +45,22 @@ router.post('/', async (req, res) => {
       notes: notes || '',
       mood: mood || '',
     })
+
+    // If the user recorded a medication, also create a MedicationLog so it
+    // shows up on the Medications page and feeds the effectiveness tracker.
+    if (medication && medication.trim()) {
+      try {
+        await MedicationLog.create({
+          userId: req.user.id,
+          entryId: entry._id,
+          medicationName: medication.trim(),
+          severityBefore: severity,
+        })
+      } catch (medErr) {
+        console.error('Medication log create failed:', medErr.message)
+        // Non-fatal — the symptom entry itself still succeeded.
+      }
+    }
 
     res.status(201).json({ entry })
 

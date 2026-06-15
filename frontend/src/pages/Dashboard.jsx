@@ -16,7 +16,9 @@ import {
 import Layout from '../components/Layout'
 import SeverityBadge from '../components/SeverityBadge'
 import HealthInsights from '../components/HealthInsights'
+import CalendarHeatmap from '../components/CalendarHeatmap'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import { api } from '../api'
 
 const SEV_LABEL = { 1: 'Mild', 2: 'Moderate', 3: 'Severe', 4: 'Very severe' }
@@ -121,9 +123,11 @@ function SevTooltip({ active, payload, label }) {
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const { dark } = useTheme()
   const [stats, setStats] = useState(null)
   const [insights, setInsights] = useState([])
   const [recent, setRecent] = useState([])
+  const [heatmapEntries, setHeatmapEntries] = useState([])
   const [days, setDays] = useState(30)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -131,15 +135,23 @@ export default function Dashboard() {
   useEffect(() => {
     setLoading(true)
     setError('')
+    // ~12 weeks of history for the calendar heatmap, regardless of the
+    // selected day-range filter above.
+    const from = new Date()
+    from.setDate(from.getDate() - 90)
+    const fromISO = from.toISOString()
+
     Promise.all([
       api.get(`/api/stats/summary?days=${days}`),
       api.get('/api/insights'),
       api.get('/api/symptoms?page=1&limit=3'),
+      api.get(`/api/symptoms?from=${fromISO}&limit=50`),
     ])
-      .then(([s, ins, r]) => {
+      .then(([s, ins, r, hm]) => {
         setStats(s)
         setInsights(ins.insights || [])
         setRecent(r.entries || [])
+        setHeatmapEntries(hm.entries || [])
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
@@ -335,6 +347,16 @@ export default function Dashboard() {
                     Log entries on more days to see the trend line
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Activity heatmap */}
+            {heatmapEntries.length > 0 && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                  Symptom activity (last 12 weeks)
+                </h2>
+                <CalendarHeatmap entries={heatmapEntries} dark={dark} />
               </div>
             )}
 

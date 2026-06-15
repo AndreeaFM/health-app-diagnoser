@@ -30,6 +30,69 @@ const EFF = [
 ]
 const SEV = { 1: 'Mild', 2: 'Moderate', 3: 'Severe', 4: 'Very severe' }
 
+const EFF_LABEL = {
+  much_better: 'Much better',
+  better: 'Better',
+  no_change: 'No change',
+  worse: 'Worse',
+}
+
+// Compact row for the full medication history list.
+function LoggedMedRow({ log }) {
+  const taken = new Date(log.createdAt)
+  const hoursAgo = (Date.now() - taken) / 3600000
+  const prescribed = !!log.prescribedBy?.doctorId
+
+  let status
+  if (log.followedUp) {
+    status = {
+      text: log.effectiveness ? EFF_LABEL[log.effectiveness] : 'Followed up',
+      cls: 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',
+    }
+  } else if (hoursAgo >= 6) {
+    status = {
+      text: 'Follow-up ready',
+      cls: 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300',
+    }
+  } else {
+    const inHrs = Math.max(1, Math.ceil(6 - hoursAgo))
+    status = {
+      text: `Follow-up in ~${inHrs}h`,
+      cls: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3 py-3 px-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+          {log.medicationName}
+          {log.dosage ? (
+            <span className="text-gray-400 font-normal"> · {log.dosage}</span>
+          ) : null}
+        </p>
+        <p className="text-xs text-gray-400 dark:text-gray-500">
+          {prescribed
+            ? `Prescribed by ${log.prescribedBy.doctorName || 'doctor'} · `
+            : ''}
+          {taken.toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'short',
+          })}
+          {log.entryId?.symptomTypes?.length
+            ? ` · for ${log.entryId.symptomTypes.join(', ')}`
+            : ''}
+        </p>
+      </div>
+      <span
+        className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${status.cls}`}
+      >
+        {status.text}
+      </span>
+    </div>
+  )
+}
+
 function FollowUpCard({ log, onDone }) {
   const [form, setForm] = useState({
     effectiveness: '',
@@ -143,17 +206,20 @@ function FollowUpCard({ log, onDone }) {
 
 export default function Medications() {
   const [pending, setPending] = useState([])
+  const [logs, setLogs] = useState([])
   const [stats, setStats] = useState([])
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
     setLoading(true)
     try {
-      const [p, s] = await Promise.all([
+      const [p, l, s] = await Promise.all([
         api.get('/api/medications/pending'),
+        api.get('/api/medications'),
         api.get('/api/medications/stats'),
       ])
       setPending(p.pending)
+      setLogs(l.logs || [])
       setStats(s.stats)
     } catch {
     } finally {
@@ -217,6 +283,19 @@ export default function Medications() {
                 <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">
                   Follow-ups appear 6h after logging a medication.
                 </p>
+              </div>
+            )}
+
+            {logs.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                  Logged medications ({logs.length})
+                </h2>
+                <div className="space-y-2">
+                  {logs.map((log) => (
+                    <LoggedMedRow key={log._id} log={log} />
+                  ))}
+                </div>
               </div>
             )}
 
@@ -327,17 +406,19 @@ export default function Medications() {
               </div>
             )}
 
-            {stats.length === 0 && pending.length === 0 && (
-              <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No medication data yet
-                </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  Enter a medication when logging a symptom — follow-up appears
-                  after 6h.
-                </p>
-              </div>
-            )}
+            {stats.length === 0 &&
+              pending.length === 0 &&
+              logs.length === 0 && (
+                <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No medication data yet
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    Enter a medication when logging a symptom — follow-up
+                    appears after 6h.
+                  </p>
+                </div>
+              )}
           </>
         )}
       </div>

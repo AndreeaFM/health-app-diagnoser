@@ -16,7 +16,18 @@ export default function ShareManager() {
   const [generating, setGenerating] = useState(false)
   const [newUrl, setNewUrl] = useState('')
   const [label, setLabel] = useState('')
+  const [expiresInDays, setExpiresInDays] = useState(30)
   const [copied, setCopied] = useState('')
+
+  const DURATIONS = [
+    { label: '7 days', value: 7 },
+    { label: '30 days', value: 30 },
+    { label: '90 days', value: 90 },
+    { label: '1 year', value: 365 },
+    { label: '10 years', value: 3650 },
+  ]
+  const durationLabel = (d) =>
+    DURATIONS.find((o) => o.value === Number(d))?.label || `${d} days`
 
   const BASE =
     import.meta.env.VITE_API_URL?.replace(':5001', '') ||
@@ -43,6 +54,7 @@ export default function ShareManager() {
     try {
       const d = await api.post('/api/share/generate', {
         label: label || 'Shared with doctor',
+        expiresInDays: Number(expiresInDays),
       })
       // Build frontend URL
       const url = `${BASE}/doctor/view/${d.shareToken.token}`
@@ -53,6 +65,15 @@ export default function ShareManager() {
       alert('Failed to generate: ' + err.message)
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const extend = async (tokenId, days) => {
+    try {
+      await api.patch(`/api/share/${tokenId}/extend`, { expiresInDays: days })
+      load()
+    } catch (err) {
+      alert('Failed to extend: ' + err.message)
     }
   }
 
@@ -100,6 +121,17 @@ export default function ShareManager() {
               placeholder="Label (e.g. Dr. Ionescu – Cardiology)"
               className="flex-1 px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-blue-400 transition"
             />
+            <select
+              value={expiresInDays}
+              onChange={(e) => setExpiresInDays(Number(e.target.value))}
+              className="px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-400 transition shrink-0"
+            >
+              {DURATIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  Valid {o.label}
+                </option>
+              ))}
+            </select>
             <button
               onClick={generate}
               disabled={generating}
@@ -132,8 +164,8 @@ export default function ShareManager() {
                 </button>
               </div>
               <p className="text-xs text-blue-600 dark:text-blue-500 mt-2">
-                Valid for 30 days. The doctor needs a doctor account to access
-                it.
+                Valid for {durationLabel(expiresInDays)}. The doctor needs a
+                doctor account to access it.
               </p>
             </div>
           )}
@@ -205,6 +237,25 @@ export default function ShareManager() {
                           {copied === t._id ? 'Copied!' : 'Copy link'}
                         </button>
                       )}
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value)
+                            extend(t._id, Number(e.target.value))
+                          e.target.value = ''
+                        }}
+                        className="text-xs px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition focus:outline-none"
+                        title="Extend expiry"
+                      >
+                        <option value="">
+                          {expired ? 'Reactivate…' : 'Extend…'}
+                        </option>
+                        {DURATIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label} from now
+                          </option>
+                        ))}
+                      </select>
                       <button
                         onClick={() => revoke(t._id)}
                         className="text-xs px-2.5 py-1.5 border border-red-200 dark:border-red-800 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition"
