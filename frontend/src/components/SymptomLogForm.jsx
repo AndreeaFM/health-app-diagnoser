@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import TriageResult from './TriageResult'
+import BodyMap from './BodyMap'
+import { useTheme } from '../context/ThemeContext'
 
 const BODY_AREAS = [
   'Head',
@@ -138,6 +140,7 @@ function OtherInput({ value, onChange, placeholder }) {
 
 export default function SymptomLogForm() {
   const navigate = useNavigate()
+  const { dark } = useTheme()
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
   const [triaging, setTriaging] = useState(false)
@@ -335,6 +338,13 @@ export default function SymptomLogForm() {
 
       <div className="bg-white rounded-2xl border border-gray-100 p-4">
         <Label required>Body area</Label>
+        <div className="mb-3">
+          <BodyMap
+            selected={form.bodyAreas}
+            onToggle={toggle('bodyAreas')}
+            dark={dark}
+          />
+        </div>
         <ChipGroup
           options={BODY_AREAS}
           selected={form.bodyAreas}

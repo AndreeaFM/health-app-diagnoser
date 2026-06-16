@@ -52,6 +52,10 @@ const UserSchema = new mongoose.Schema(
       acceptedAt: { type: Date },
     },
 
+    // Password reset (hashed token + expiry)
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
+
     // Onboarding — track which steps are done
     onboarding: {
       completed: { type: Boolean, default: false },

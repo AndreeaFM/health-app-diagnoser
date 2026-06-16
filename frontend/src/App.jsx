@@ -6,6 +6,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 // Pages
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import LogSymptom from './pages/LogSymptom'
@@ -70,6 +72,8 @@ function AppRoutes() {
       <Route path="/" element={<HomeRedirect />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
 
       {/* Doctor share link — no auth needed to view the accept page */}
       <Route path="/doctor/view/:token" element={<DoctorView />} />

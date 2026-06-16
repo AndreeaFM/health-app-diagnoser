@@ -1,8 +1,10 @@
 import express from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import User from '../models/User.js'
 import { audit } from '../services/audit.js'
+import { sendEmail, isEmailConfigured } from '../services/email.js'
 
 const router = express.Router()
 
@@ -127,6 +129,92 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err.message)
     res.status(500).json({ error: 'Server error during login' })
+  }
+})
+
+// POST /api/auth/forgot-password  { email }
+// Always returns a generic success so the response doesn't reveal whether an
+// account exists. Emails a reset link if the account is found.
+router.post('/forgot-password', async (req, res) => {
+  const generic = {
+    message: 'If an account exists for that email, a reset link has been sent.',
+  }
+  try {
+    const { email } = req.body
+    if (!email) return res.status(400).json({ error: 'Email is required' })
+
+    const user = await User.findOne({ email: email.toLowerCase() })
+    if (!user) return res.status(200).json(generic)
+
+    // Raw token goes in the link; only its hash is stored.
+    const rawToken = crypto.randomBytes(32).toString('hex')
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex')
+    user.resetPasswordToken = tokenHash
+    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+    await user.save()
+
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5174'
+    const resetUrl = `${clientUrl}/reset-password/${rawToken}`
+
+    if (isEmailConfigured()) {
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: 'Reset your SymptomTracker password',
+          text: `Reset your password using this link (valid for 1 hour): ${resetUrl}`,
+          html: `<p>We received a request to reset your SymptomTracker password.</p>
+                 <p><a href="${resetUrl}">Click here to choose a new password</a>. This link is valid for 1 hour.</p>
+                 <p>If you didn't request this, you can ignore this email.</p>`,
+        })
+      } catch (mailErr) {
+        console.error('Reset email failed:', mailErr.message)
+      }
+    } else {
+      // Dev convenience: no email configured → log the link so it's testable.
+      console.log(
+        `[forgot-password] Email not configured. Reset link: ${resetUrl}`,
+      )
+    }
+
+    res.status(200).json(generic)
+  } catch (err) {
+    console.error('Forgot password error:', err.message)
+    res.status(500).json({ error: 'Failed to process request' })
+  }
+})
+
+// POST /api/auth/reset-password/:token  { password }
+router.post('/reset-password/:token', async (req, res) => {
+  try {
+    const { password } = req.body
+    if (!password || password.length < 6)
+      return res
+        .status(400)
+        .json({ error: 'Password must be at least 6 characters' })
+
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(req.params.token)
+      .digest('hex')
+
+    const user = await User.findOne({
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: { $gt: new Date() },
+    })
+    if (!user)
+      return res
+        .status(400)
+        .json({ error: 'This reset link is invalid or has expired' })
+
+    user.passwordHash = await bcrypt.hash(password, 12)
+    user.resetPasswordToken = null
+    user.resetPasswordExpires = null
+    await user.save()
+
+    res.status(200).json({ message: 'Password updated. You can now sign in.' })
+  } catch (err) {
+    console.error('Reset password error:', err.message)
+    res.status(500).json({ error: 'Failed to reset password' })
   }
 })
 
