@@ -48,7 +48,7 @@ function formatDate(iso) {
   })
 }
 
-function EntryCard({ entry, onDelete }) {
+function EntryCard({ entry, onDelete, notes }) {
   const [confirm, setConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -127,6 +127,23 @@ function EntryCard({ entry, onDelete }) {
                 Mood: {entry.mood}
               </span>
             )}
+            {notes?.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {notes.map((n) => (
+                  <div
+                    key={n._id}
+                    className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 px-3 py-2"
+                  >
+                    <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-0.5">
+                      Note from Dr. {n.doctorName}
+                    </p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                      {n.note}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -201,6 +218,7 @@ function EntryCard({ entry, onDelete }) {
 export default function History() {
   const { dark } = useTheme()
   const [entries, setEntries] = useState([])
+  const [notesByEntry, setNotesByEntry] = useState({})
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
@@ -236,6 +254,11 @@ export default function History() {
         setTotal(data.total)
         setPage(data.page)
         setPages(data.pages)
+        // Shared doctor notes for these entries (best-effort, non-blocking)
+        api
+          .get('/api/symptoms/doctor-notes')
+          .then((d) => setNotesByEntry(d.notesByEntry || {}))
+          .catch(() => {})
       } catch (err) {
         setError(err.message)
       } finally {
@@ -520,6 +543,7 @@ export default function History() {
                 key={entry._id}
                 entry={entry}
                 onDelete={handleDelete}
+                notes={notesByEntry[entry._id]}
               />
             ))}
           </div>

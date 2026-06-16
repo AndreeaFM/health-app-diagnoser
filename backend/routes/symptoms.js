@@ -1,11 +1,38 @@
 import express from 'express'
 import SymptomEntry from '../models/SymptomEntry.js'
 import MedicationLog from '../models/MedicationLog.js'
+import DoctorNote from '../models/DoctorNote.js'
 import verifyToken from '../middleware/verifyToken.js'
 import { detectPatterns } from '../services/patternDetection.js'
 
 const router = express.Router()
 router.use(verifyToken)
+
+// GET /api/symptoms/doctor-notes
+// Returns the doctor notes shared with this patient, grouped by entry id.
+// Private notes (visibility: 'private') are never returned here.
+router.get('/doctor-notes', async (req, res) => {
+  try {
+    const notes = await DoctorNote.find({
+      patientId: req.user.id,
+      visibility: 'shared',
+    })
+      .sort({ createdAt: -1 })
+      .select('entryId doctorName note createdAt')
+
+    const notesByEntry = {}
+    notes.forEach((n) => {
+      const key = n.entryId.toString()
+      if (!notesByEntry[key]) notesByEntry[key] = []
+      notesByEntry[key].push(n)
+    })
+
+    res.status(200).json({ notesByEntry })
+  } catch (err) {
+    console.error('Fetch doctor notes error:', err.message)
+    res.status(500).json({ error: 'Failed to fetch doctor notes' })
+  }
+})
 
 // POST /api/symptoms
 router.post('/', async (req, res) => {
