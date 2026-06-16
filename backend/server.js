@@ -3,6 +3,8 @@ import 'dotenv/config'
 import express from 'express'
 import mongoose from 'mongoose'
 import cors from 'cors'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import authRoutes from './routes/auth.js'
 import symptomRoutes from './routes/symptoms.js'
@@ -25,6 +27,9 @@ dotenv.config()
 
 const app = express()
 
+// Security headers
+app.use(helmet())
+
 app.use(
   cors({
     origin: process.env.CLIENT_URL || 'http://localhost:5174',
@@ -33,9 +38,25 @@ app.use(
 )
 app.use(express.json())
 
+// Rate limiting — a generous global cap, plus a strict cap on auth endpoints
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // 20 login/register attempts per IP per 15 min
+  message: { error: 'Too many attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+app.use(globalLimiter)
+
 app.get('/', (req, res) => res.json({ message: 'Symptom Tracker API ✓' }))
 
-app.use('/api/auth', authRoutes)
+app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/symptoms', symptomRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/stats', statsRoutes)

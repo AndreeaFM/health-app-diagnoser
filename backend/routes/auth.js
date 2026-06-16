@@ -23,7 +23,8 @@ const generateToken = (user) =>
 // patient but flagged for doctor verification (an admin approves it later).
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, requestDoctor, licenseNumber } = req.body
+    const { name, email, password, requestDoctor, licenseNumber, consent } =
+      req.body
     if (!name || !email || !password)
       return res
         .status(400)
@@ -32,6 +33,11 @@ router.post('/register', async (req, res) => {
       return res
         .status(400)
         .json({ error: 'Password must be at least 6 characters' })
+    if (!consent)
+      return res.status(400).json({
+        error:
+          'You must agree to the processing of your health data to register',
+      })
 
     const existing = await User.findOne({ email: email.toLowerCase() })
     if (existing)
@@ -45,6 +51,7 @@ router.post('/register', async (req, res) => {
       email,
       passwordHash,
       role: 'patient',
+      consent: { accepted: true, acceptedAt: new Date() },
       ...(requestDoctor
         ? {
             doctorInfo: { licenseNumber: licenseNumber || '' },

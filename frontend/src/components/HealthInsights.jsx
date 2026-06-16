@@ -223,6 +223,10 @@ export default function HealthInsights({
           onActedOn={handleActedOn}
         />
       ))}
+      <p className="text-xs text-gray-400 dark:text-gray-500">
+        Insights are automatically generated from your logs and are not medical
+        advice. Consult a healthcare professional for any health concerns.
+      </p>
     </div>
   )
 }

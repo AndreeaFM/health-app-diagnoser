@@ -46,6 +46,12 @@ const UserSchema = new mongoose.Schema(
     // Is the account active? Admins can deactivate users
     isActive: { type: Boolean, default: true },
 
+    // Record of the user's consent to data processing (GDPR)
+    consent: {
+      accepted: { type: Boolean, default: false },
+      acceptedAt: { type: Date },
+    },
+
     // Onboarding — track which steps are done
     onboarding: {
       completed: { type: Boolean, default: false },

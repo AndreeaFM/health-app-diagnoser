@@ -11,6 +11,7 @@ export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [accountType, setAccountType] = useState('patient')
   const [licenseNumber, setLicenseNumber] = useState('')
+  const [consent, setConsent] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -28,11 +29,20 @@ export default function Register() {
       setError('A license number is required to request a doctor account')
       return
     }
+    if (!consent) {
+      setError('Please agree to the processing of your health data')
+      return
+    }
     setLoading(true)
     try {
       const payload = isDoctor
-        ? { ...form, requestDoctor: true, licenseNumber: licenseNumber.trim() }
-        : form
+        ? {
+            ...form,
+            consent: true,
+            requestDoctor: true,
+            licenseNumber: licenseNumber.trim(),
+          }
+        : { ...form, consent: true }
       const data = await api.post('/api/auth/register', payload)
       login(data.token, data.user)
       if (data.doctorRequested) {
@@ -174,6 +184,19 @@ export default function Register() {
                 </p>
               </div>
             )}
+            <label className="flex items-start gap-2 text-xs text-gray-600 select-none">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-0.5 shrink-0"
+              />
+              <span>
+                I agree to SymptomTracker storing and processing my health data
+                for the purpose of symptom tracking, and I understand I can
+                export or delete my data at any time.
+              </span>
+            </label>
             <button
               type="submit"
               disabled={loading}
