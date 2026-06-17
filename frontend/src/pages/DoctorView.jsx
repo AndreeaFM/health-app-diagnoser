@@ -556,9 +556,12 @@ export default function DoctorView() {
                 : '—',
             },
             {
-              label: 'High urgency',
-              value: stats.highUrgency,
-              highlight: stats.highUrgency > 0,
+              label: 'Severe entries',
+              value: stats.severeCount ?? 0,
+              highlight: (stats.severeCount ?? 0) > 0,
+              sub: stats.highUrgency
+                ? `${stats.highUrgency} flagged high by AI`
+                : null,
             },
           ].map((s) => (
             <div
@@ -581,6 +584,11 @@ export default function DoctorView() {
               >
                 {s.value}
               </p>
+              {s.sub && (
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+                  {s.sub}
+                </p>
+              )}
             </div>
           ))}
         </div>

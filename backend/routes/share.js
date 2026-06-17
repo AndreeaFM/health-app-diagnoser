@@ -277,6 +277,11 @@ router.get('/patient/:token', verifyToken, requireDoctor, async (req, res) => {
         10
       : 0
 
+    // Severe entries by the patient's own rating (3 = Severe, 4 = Very severe).
+    // This reflects what the patient logged, independent of whether AI triage ran.
+    const severeCount = entries.filter((e) => e.severity >= 3).length
+
+    // AI-flagged high urgency (only set when the patient ran triage on an entry)
     const highUrgency = entries.filter(
       (e) => e.triage?.urgency === 'high',
     ).length
@@ -285,7 +290,7 @@ router.get('/patient/:token', verifyToken, requireDoctor, async (req, res) => {
       patient,
       entries,
       notesByEntry,
-      stats: { total, avgSeverity, highUrgency },
+      stats: { total, avgSeverity, severeCount, highUrgency },
       sharedAt: shareToken.createdAt,
       expiresAt: shareToken.expiresAt,
     })
